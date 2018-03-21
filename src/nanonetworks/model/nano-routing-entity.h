@@ -62,6 +62,7 @@ public:
   virtual void SendPacket (Ptr<Packet> p);//纯虚函数。
   virtual void ReceivePacket (Ptr<Packet> p);//纯虚函数。
   virtual void ForwardPacket (Ptr<Packet> p);//纯虚函数。
+  virtual void SendPacketDst(Ptr<Packet> p, uint32_t dstId);
 
 
 private:

@@ -76,9 +76,9 @@ public:
 	//virtual void ForwardPacket(Ptr<Packet> p, uint32_t fromNodeId);
 //send feedback
 public:
-	void SendPacketDst(Ptr<Packet> p, uint32_t dstNodeId);
+	virtual void SendPacketDst(Ptr<Packet> p, uint32_t dstNodeId);
 	void SendFeedbackPacket(Ptr<Packet> p, uint32_t fromNodeId);
-	void ForwardPacketNext(Ptr<Packet> p, uint32_t fromNodeId);
+	virtual void ForwardPacket(Ptr<Packet> p, uint32_t fromNodeId);
 	//checke the sent/received that whethe the packet has been sent/received before.
 public:
 	void UpdateReceivedPacketId(uint32_t id);

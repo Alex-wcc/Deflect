@@ -458,12 +458,12 @@ void QRouting::ReceivePacket(Ptr<Packet> p) {
 		GetDevice()->GetMessageProcessUnit()->ProcessMessage(p);
 	} else {
 		NS_LOG_FUNCTION(this<<"forward!");
-		ForwardPacketNext(p, from);
+		ForwardPacket(p, from);
 	}
 
 }
 
-void QRouting::ForwardPacketNext(Ptr<Packet> p, uint32_t fromNodeId) {
+void QRouting::ForwardPacket(Ptr<Packet> p, uint32_t fromNodeId) {
 	NS_LOG_FUNCTION(this);
 	uint32_t nextId = GetDevice()->GetNode()->GetId();	//如果找不到就给自己。
 

@@ -18,7 +18,6 @@
  * Author: Giuseppe Piro <peppe@giuseppepiro.com>, <g.piro@poliba.it>
  */
 
-
 #include "nano-routing-entity.h"
 #include "ns3/log.h"
 #include "ns3/pointer.h"
@@ -44,101 +43,73 @@
 #include "nano-routing-entity.h"
 #include "message-process-unit.h"
 
-
-NS_LOG_COMPONENT_DEFINE ("NanoRoutingEntity");
+NS_LOG_COMPONENT_DEFINE("NanoRoutingEntity");
 
 namespace ns3 {
 
+NS_OBJECT_ENSURE_REGISTERED(NanoRoutingEntity);
 
-NS_OBJECT_ENSURE_REGISTERED (NanoRoutingEntity);
-
-TypeId NanoRoutingEntity::GetTypeId (void)
-{
-  static TypeId tid = TypeId ("ns3::NanoRoutingEntity")
-    .SetParent<Object> ();
-  return tid;
+TypeId NanoRoutingEntity::GetTypeId(void) {
+	static TypeId tid = TypeId("ns3::NanoRoutingEntity").SetParent<Object>();
+	return tid;
 }
 
-
-NanoRoutingEntity::NanoRoutingEntity ()
-{
-  m_device = 0;
+NanoRoutingEntity::NanoRoutingEntity() {
+	m_device = 0;
 }
 
-
-NanoRoutingEntity::~NanoRoutingEntity ()
-{
-  m_device = 0;
+NanoRoutingEntity::~NanoRoutingEntity() {
+	m_device = 0;
 }
 
-void 
-NanoRoutingEntity::DoDispose (void)
-{
-  m_device = 0;
+void NanoRoutingEntity::DoDispose(void) {
+	m_device = 0;
 }
 
-void
-NanoRoutingEntity::SetDevice (Ptr<SimpleNanoDevice> d)
-{
-  NS_LOG_FUNCTION (this << d);
-  m_device = d;
+void NanoRoutingEntity::SetDevice(Ptr<SimpleNanoDevice> d) {
+	NS_LOG_FUNCTION(this << d);
+	m_device = d;
 }
 
-Ptr<SimpleNanoDevice>
-NanoRoutingEntity::GetDevice ()
-{
-  NS_LOG_FUNCTION (this);
-  return m_device;
+Ptr<SimpleNanoDevice> NanoRoutingEntity::GetDevice() {
+	NS_LOG_FUNCTION(this);
+	return m_device;
 }
 
-void
-NanoRoutingEntity::SendPacket (Ptr<Packet> p)
-{}
-
-void
-NanoRoutingEntity::ReceivePacket (Ptr<Packet> p)
-{}
-
-void
-NanoRoutingEntity::ForwardPacket (Ptr<Packet> p)
-{}
-
-
-TypeId
-SenderTypeTag::GetTypeId (void)
-{
-  static TypeId tid = TypeId ("ns3::SenderTypeTag")
-    .SetParent<Tag> ()
-    .AddConstructor<SenderTypeTag> ()
-  ;
-  return tid;
-}
-TypeId
-SenderTypeTag::GetInstanceTypeId (void) const
-{
-  return GetTypeId ();
-}
-void
-SenderTypeTag::Print (std::ostream &os) const
-{
-  os << type;
+void NanoRoutingEntity::SendPacket(Ptr<Packet> p) {
 }
 
-uint32_t
-SenderTypeTag::GetSerializedSize (void) const
-{
-  return 4;
+void NanoRoutingEntity::ReceivePacket(Ptr<Packet> p) {
 }
-void
-SenderTypeTag::Serialize (TagBuffer i) const
-{
-  i.WriteU32 (type);
+
+void NanoRoutingEntity::ForwardPacket(Ptr<Packet> p) {
+}
+
+void NanoRoutingEntity::SendPacketDst(Ptr<Packet> p, uint32_t dstId) {
+}
+
+TypeId SenderTypeTag::GetTypeId(void) {
+	static TypeId tid =
+			TypeId("ns3::SenderTypeTag").SetParent<Tag>().AddConstructor<
+					SenderTypeTag>();
+	return tid;
+}
+TypeId SenderTypeTag::GetInstanceTypeId(void) const {
+	return GetTypeId();
+}
+void SenderTypeTag::Print(std::ostream &os) const {
+	os << type;
+}
+
+uint32_t SenderTypeTag::GetSerializedSize(void) const {
+	return 4;
+}
+void SenderTypeTag::Serialize(TagBuffer i) const {
+	i.WriteU32(type);
 
 }
-void
-SenderTypeTag::Deserialize (TagBuffer i)
-{
-  type = i.ReadU32 ();
+void SenderTypeTag::Deserialize(TagBuffer i) {
+	type = i.ReadU32();
 }
 
 } // namespace ns3

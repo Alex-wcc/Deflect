@@ -7,3 +7,7 @@ def build(bld):
     obj = bld.create_ns3_program('health-care',
                                  ['core', 'mobility', 'network', 'nanonetworks'])
     obj.source = 'health-care.cc'
+    
+    obj = bld.create_ns3_program('deflect-routing',
+                                 ['core', 'mobility', 'network', 'nanonetworks'])
+    obj.source = 'deflect-routing.cc'

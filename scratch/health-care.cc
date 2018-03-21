@@ -110,7 +110,7 @@ void Run(int nbNanoNodes, int nbNanoRouters, int nbNanoGateways, double txRangeN
 
 	//timers
 	Time::SetResolution(Time::FS);
-	double duration = 5;// run for 5 seconds;
+	double duration = 5;
 
 	//layout details
 	double xrange = 1;
@@ -264,7 +264,7 @@ void Run(int nbNanoNodes, int nbNanoRouters, int nbNanoGateways, double txRangeN
 		Ptr<ConstantPositionMobilityModel> m = CreateObject<
 				ConstantPositionMobilityModel> ();
 		m->SetPosition(Vector(x * (xrange / nbNanoRouters), 0.0, 0.0));
-		nano.AddMobility(router->GetPhy(), m);//这里明显是平均进行布局的。
+		nano.AddMobility(router->GetPhy(), m);
 
 		Ptr<NanoRoutingEntity> routing;
 		if (l3Type == 1) {

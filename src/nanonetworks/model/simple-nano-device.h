@@ -119,7 +119,8 @@ public:
 
   void SendPacket (Ptr<Packet> p);
   void ReceivePacket (Ptr<Packet> p);
-
+  void SendPacketDst(Ptr<Packet> p, uint32_t dstId);//to send the message to a certain destination
+//the q-routing will
   void SetMessageProcessUnit (Ptr<MessageProcessUnit> mpu);
   Ptr<MessageProcessUnit> GetMessageProcessUnit (void);
 

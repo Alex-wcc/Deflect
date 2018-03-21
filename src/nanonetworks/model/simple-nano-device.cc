@@ -269,6 +269,12 @@ SimpleNanoDevice::SendPacket (Ptr<Packet> p)
   NS_LOG_FUNCTION (this << p << "node" << GetNode ()->GetId ());
   GetL3 ()->SendPacket (p);
 }
+void
+SimpleNanoDevice::SendPacketDst(Ptr<Packet> p, uint32_t dstId)
+{
+	NS_LOG_FUNCTION (this<<p<<"node"<<GetNode()->GetId());
+	GetL3()->SendPacketDst(p, dstId);
+	}
 
 void
 SimpleNanoDevice::ReceivePacket (Ptr<Packet> p)
