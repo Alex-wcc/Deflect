@@ -46,6 +46,7 @@ void NanoL3Header::Serialize(Buffer::Iterator start) const {
 	start.WriteHtonU32(m_ttl);
 	start.WriteHtonU32(m_packetId);
 	start.WriteHtonU32(m_hopcount);
+	start.WriteHtonU32(m_intqvalue);
 	start.WriteHtonU32(m_previous);
 	start.WriteHtonU32(m_qhopcount);
 
@@ -58,6 +59,7 @@ uint32_t NanoL3Header::Deserialize(Buffer::Iterator start) {
 	m_destination = rbuf.ReadNtohU32();
 	m_ttl = rbuf.ReadNtohU32();
 	m_packetId = rbuf.ReadNtohU32();
+	m_intqvalue = rbuf.ReadNtohU32();
 	m_hopcount = rbuf.ReadNtohU32();
 	m_previous = rbuf.ReadNtohU32();
 	m_qhopcount = rbuf.ReadNtohU32();
@@ -106,8 +108,8 @@ uint32_t NanoL3Header::GetPacketId() const {
 void NanoL3Header::SetQvalue(double qvalue) {
 	m_qvalue = qvalue;
 }
-double NanoL3Header::GetQvalue() const {
-	return m_qvalue;
+uint32_t NanoL3Header::GetQvalue() const {
+	return m_intqvalue;
 }
 void NanoL3Header::SetHopCount(int hopcount) {
 	m_hopcount = hopcount;

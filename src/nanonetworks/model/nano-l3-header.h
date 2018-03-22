@@ -87,7 +87,7 @@ public:
 
 //for the q value and hop count
   void SetQvalue(double qvalue);
-  double GetQvalue() const;
+  uint32_t GetQvalue() const;
 
   void SetHopCount(int hopcount);
   uint32_t GetHopCount() const;
@@ -106,7 +106,7 @@ private:
   uint32_t m_previous;
   uint32_t m_ttl;
   uint32_t m_packetId;
-  double m_qvalue;
+  uint32_t m_intqvalue;
   uint32_t m_hopcount;
   uint32_t m_qhopcount;
 };
