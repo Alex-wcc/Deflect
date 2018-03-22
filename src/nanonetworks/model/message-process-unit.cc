@@ -101,7 +101,7 @@ MessageProcessUnit::CreteMessage ()
 
   m_outTX ((int)p->GetUid (), (int)GetDevice ()->GetNode ()->GetId ());
 
-  m_device->SendPacketDst (p,m_dstId);
+  m_device->SendPacket (p);
   Simulator::Schedule (Seconds (m_interarrivalTime), &MessageProcessUnit::CreteMessage, this);
 }
 
