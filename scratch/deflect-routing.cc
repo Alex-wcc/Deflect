@@ -51,7 +51,7 @@ void PrintMemoryUsage(void);
 
 int main(int argc, char *argv[]) {
 	int nbNanoNodes = 200;
-	double txRangeNanoNodes = 0.01;
+	double txRangeNanoNodes = 0.1;
 	int macType = 2;
 	int l3Type = 3; //deflection routing
 	int seed = 1;

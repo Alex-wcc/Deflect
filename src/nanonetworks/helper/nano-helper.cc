@@ -18,7 +18,6 @@
  * Author: Giuseppe Piro <peppe@giuseppepiro.com>, <g.piro@poliba.it>
  */
 
-
 #include "nano-helper.h"
 #include "ns3/simulator.h"
 #include "ns3/packet.h"
@@ -37,125 +36,110 @@
 #include "ns3/random-nano-routing-entity.h"
 #include "ns3/flooding-nano-routing-entity.h"
 
-NS_LOG_COMPONENT_DEFINE ("NanoHelper");
+NS_LOG_COMPONENT_DEFINE("NanoHelper");
 
 namespace ns3 {
 
-NanoHelper::NanoHelper (void)
-  : m_channel (CreateObject<NanoSpectrumChannel> ())
-{}
-
-NanoHelper::~NanoHelper (void)
-{
-  m_channel = 0;
+NanoHelper::NanoHelper(void) :
+		m_channel(CreateObject<NanoSpectrumChannel>()) {
 }
 
-
-void 
-NanoHelper::AddMobility (Ptr<NanoSpectrumPhy> phy, Ptr<MobilityModel> m)
-{
-  phy->SetMobility (m);
+NanoHelper::~NanoHelper(void) {
+	m_channel = 0;
 }
 
-
-NetDeviceContainer 
-NanoHelper::Install (NodeContainer c)
-{
-  NetDeviceContainer devices;
-  for (NodeContainer::Iterator i = c.Begin (); i != c.End (); i++)
-    {
-      Ptr<Node> node = *i;
-      Ptr<NanoSpectrumPhy> phy;
-      Ptr<TsOokBasedNanoSpectrumPhy> phy2 = CreateObject<TsOokBasedNanoSpectrumPhy>();
-      phy = phy2;
-      Ptr<SimpleNanoDevice> device = CreateObject<SimpleNanoDevice>();
-      device->SetNode (node);
-      device->SetPhy (phy);
-      //device->SetAddress (Mac48Address::Allocate ());
-      phy->SetDevice (device);
-      //device->Start ();
-      node->AddDevice (device);
-      devices.Add (device);
-
-      /*
-      Ptr<FloodingNanoRoutingEntity> l3 = CreateObject<FloodingNanoRoutingEntity>();
-      l3->SetDevice (device);
-      device->SetL3 (l3);
-      */
-
-      phy->SetChannel (m_channel);
-      m_channel->AddRx (phy);
-    }
-  return devices;
+void NanoHelper::AddMobility(Ptr<NanoSpectrumPhy> phy, Ptr<MobilityModel> m) {
+	phy->SetMobility(m);
 }
 
+NetDeviceContainer NanoHelper::Install(NodeContainer c) {
+	NetDeviceContainer devices;
+	for (NodeContainer::Iterator i = c.Begin(); i != c.End(); i++) {
+		Ptr<Node> node = *i;
+		Ptr<NanoSpectrumPhy> phy;
+		Ptr<TsOokBasedNanoSpectrumPhy> phy2 = CreateObject<
+				TsOokBasedNanoSpectrumPhy>();
+		phy = phy2;
+		Ptr<SimpleNanoDevice> device = CreateObject<SimpleNanoDevice>();
+		device->SetNode(node);
+		device->SetPhy(phy);
+		//device->SetAddress (Mac48Address::Allocate ());
+		phy->SetDevice(device);
+		//device->Start ();
+		node->AddDevice(device);
+		devices.Add(device);
 
-NetDeviceContainer
-NanoHelper::Install (NodeContainer c, NanoHelper::NodeType t)
-{
-  NetDeviceContainer devices;
-  for (NodeContainer::Iterator i = c.Begin (); i != c.End (); i++)
-	{
-	  Ptr<Node> node = *i;
-	  Ptr<NanoSpectrumPhy> phy;
-	  Ptr<TsOokBasedNanoSpectrumPhy> phy2 = CreateObject<TsOokBasedNanoSpectrumPhy>();
-	  phy = phy2;
-	  Ptr<SimpleNanoDevice> device;
+		/*
+		 Ptr<FloodingNanoRoutingEntity> l3 = CreateObject<FloodingNanoRoutingEntity>();
+		 l3->SetDevice (device);
+		 device->SetL3 (l3);
+		 */
 
-	  if (t == NanoHelper::nanonode)
-	    {
-		  Ptr<NanoNodeDevice> device2 = CreateObject<NanoNodeDevice> ();
-		  device = device2;
-	    }
-	  else if (t == NanoHelper::nanorouter)
-	    {
-		  Ptr<NanoRouterDevice> device2 = CreateObject<NanoRouterDevice> ();
-		  device = device2;
-	    }
-	  else if (t == NanoHelper::nanointerface)
-	    {
-		  Ptr<NanoInterfaceDevice> device2 = CreateObject<NanoInterfaceDevice> ();
-		  device = device2;
-	    }
-
-	  device->SetNode (node);
-	  device->SetPhy (phy);
-	  //device->SetAddress (Mac48Address::Allocate ());
-	  phy->SetDevice (device);
-	  //device->Start ();
-	  node->AddDevice (device);
-	  devices.Add (device);
-
-	  Ptr<NanoRoutingEntity> l3 = CreateObject<NanoRoutingEntity>();
-	  l3->SetDevice (device);
-	  device->SetL3 (l3);
-
-	  phy->SetChannel (m_channel);
-	  m_channel->AddRx (phy);
+		phy->SetChannel(m_channel);
+		m_channel->AddRx(phy);
 	}
-  return devices;
+	return devices;
+}
+
+NetDeviceContainer NanoHelper::Install(NodeContainer c,
+		NanoHelper::NodeType t) {
+	NetDeviceContainer devices;
+	for (NodeContainer::Iterator i = c.Begin(); i != c.End(); i++) {
+		Ptr<Node> node = *i;
+		Ptr<NanoSpectrumPhy> phy;
+		Ptr<TsOokBasedNanoSpectrumPhy> phy2 = CreateObject<
+				TsOokBasedNanoSpectrumPhy>();
+		phy = phy2;
+		Ptr<SimpleNanoDevice> device;
+
+		if (t == NanoHelper::nanonode) {
+			Ptr<NanoNodeDevice> device2 = CreateObject<NanoNodeDevice>();
+			device = device2;
+		} else if (t == NanoHelper::nanorouter) {
+			Ptr<NanoRouterDevice> device2 = CreateObject<NanoRouterDevice>();
+			device = device2;
+		} else if (t == NanoHelper::nanointerface) {
+			Ptr<NanoInterfaceDevice> device2 =
+					CreateObject<NanoInterfaceDevice>();
+			device = device2;
+		}
+
+		device->SetNode(node);
+		device->SetPhy(phy);
+		//device->SetAddress (Mac48Address::Allocate ());
+		phy->SetDevice(device);
+		//device->Start ();
+		node->AddDevice(device);
+		devices.Add(device);
+
+		Ptr<NanoRoutingEntity> l3 = CreateObject<NanoRoutingEntity>();
+		l3->SetDevice(device);
+		device->SetL3(l3);
+
+		phy->SetChannel(m_channel);
+		m_channel->AddRx(phy);
+	}
+	return devices;
 
 }
 
-void 
-NanoHelper::EnableLogComponents (void)
-{
-  LogComponentEnable ("NanoMacEntity", LOG_LEVEL_ALL);
-  LogComponentEnable ("BackoffBasedNanoMacEntity", LOG_LEVEL_ALL);
-  LogComponentEnable ("TransparentNanoMacEntity", LOG_LEVEL_ALL);
-  LogComponentEnable ("NanoMacQueue", LOG_LEVEL_ALL);
-  LogComponentEnable ("NanoRoutingEntity", LOG_LEVEL_ALL);
-  LogComponentEnable ("FloodingNanoRoutingEntity", LOG_LEVEL_ALL);
-  LogComponentEnable ("RandomNanoRoutingEntity", LOG_LEVEL_ALL);
-  LogComponentEnable ("NanoSpectrumChannel", LOG_LEVEL_ALL);
-  LogComponentEnable ("NanoSpectrumPhy", LOG_LEVEL_ALL);
-  LogComponentEnable ("TsOokBasedNanoSpectrumPhy", LOG_LEVEL_ALL);
-  LogComponentEnable ("SimpleNanoDevice", LOG_LEVEL_ALL);
-  LogComponentEnable ("NanoNodeDevice", LOG_LEVEL_ALL);
-  LogComponentEnable ("NanoRouterDevice", LOG_LEVEL_ALL);
-  LogComponentEnable ("NanoInterfaceDevice", LOG_LEVEL_ALL);
-  LogComponentEnable ("MessageProcessUnit", LOG_LEVEL_ALL);
+void NanoHelper::EnableLogComponents(void) {
+	LogComponentEnable("NanoMacEntity", LOG_LEVEL_ALL);
+	LogComponentEnable("BackoffBasedNanoMacEntity", LOG_LEVEL_ALL);
+	LogComponentEnable("TransparentNanoMacEntity", LOG_LEVEL_ALL);
+	LogComponentEnable("NanoMacQueue", LOG_LEVEL_ALL);
+	LogComponentEnable("NanoRoutingEntity", LOG_LEVEL_ALL);
+	LogComponentEnable("FloodingNanoRoutingEntity", LOG_LEVEL_ALL);
+	LogComponentEnable("RandomNanoRoutingEntity", LOG_LEVEL_ALL);
+	LogComponentEnable("NanoSpectrumChannel", LOG_LEVEL_ALL);
+	LogComponentEnable("NanoSpectrumPhy", LOG_LEVEL_ALL);
+	LogComponentEnable("TsOokBasedNanoSpectrumPhy", LOG_LEVEL_ALL);
+	LogComponentEnable("SimpleNanoDevice", LOG_LEVEL_ALL);
+	LogComponentEnable("NanoNodeDevice", LOG_LEVEL_ALL);
+	LogComponentEnable("NanoRouterDevice", LOG_LEVEL_ALL);
+	LogComponentEnable("NanoInterfaceDevice", LOG_LEVEL_ALL);
+	LogComponentEnable("MessageProcessUnit", LOG_LEVEL_ALL);
+	LogComponentEnable("QRouting", LOG_LEVEL_ALL);
 }
-
 
 } // namespace ns3

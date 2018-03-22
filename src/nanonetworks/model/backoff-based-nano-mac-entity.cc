@@ -133,14 +133,14 @@ BackoffBasedNanoMacEntity::Send (Ptr<Packet> p)
 }
 
 void
-BackoffBasedNanoMacEntity::Send (Ptr<Packet> p, uint32_t dst)
+BackoffBasedNanoMacEntity::Send (Ptr<Packet> p, uint32_t nextId)
 {
-  NS_LOG_FUNCTION (this << p << dst);
+  NS_LOG_FUNCTION (this << p << nextId);
 
   NanoMacHeader header;
   uint32_t src = GetDevice ()->GetNode ()->GetId ();
   header.SetSource (src);
-  header.SetDestination (dst);
+  header.SetDestination (nextId);
 
   NS_LOG_FUNCTION (this << "mac header" << header);
   p->AddHeader (header);

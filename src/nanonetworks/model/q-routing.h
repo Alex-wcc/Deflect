@@ -70,9 +70,9 @@ public:
 	std::vector<PreNodeEntry> m_prenode;
 
 public:
-	//virtual void SendPacket(Ptr<Packet> p); //调用nano-routing-entity中的虚函数，其中nano-routing-entity中的为纯虚函数，在这里进行实现。
+	virtual void SendPacket(Ptr<Packet> p); //调用nano-routing-entity中的虚函数，其中nano-routing-entity中的为纯虚函数，在这里进行实现。
 	virtual void ReceivePacket(Ptr<Packet> p);
-	//virtual void ForwardPacket(Ptr<Packet> p);
+	virtual void ForwardPacket(Ptr<Packet> p);
 	//virtual void ForwardPacket(Ptr<Packet> p, uint32_t fromNodeId);
 //send feedback
 public:

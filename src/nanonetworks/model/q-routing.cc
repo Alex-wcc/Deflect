@@ -40,6 +40,7 @@
 NS_LOG_COMPONENT_DEFINE("QRouting");
 
 namespace ns3 {
+
 NS_OBJECT_ENSURE_REGISTERED(QRouting);
 
 TypeId QRouting::GetTypeId() {
@@ -61,6 +62,13 @@ QRouting::QRouting() {
 		m_sentPacketList.push_back(item);
 	}
 	//Simulator::Schedule(Seconds(0.001), &QRouting::AddPreNode, this);
+	//需要对m_qtable 和m_prenode 进行初始化，初始化后，查表要判断是不是自己，如果是自己，就不发送
+	QTableEntry OwnTable;
+	PreNodeEntry OwnPreNode;
+	OwnTable.dstId = 999;
+	m_qtable.push_back(OwnTable);
+	OwnPreNode.dstId = 999;
+	m_prenode.push_back(OwnPreNode);
 }
 
 QRouting::~QRouting() {
@@ -110,12 +118,13 @@ uint32_t QRouting::LookupRoute(uint32_t dstId) {
 
 	uint16_t i = 0; //count number
 	for (; it != m_qtable.end(); ++it) {
-		if (it->dstId == dstId /*&& it->RouteValid == true*/) {
+		if (it->dstId == dstId
+				&& it->dstId != 999/*&& it->RouteValid == true*/) {
 			break;
 		}
 		i++;
 	}
-	QTableEntry Qroute = m_qtable.at(i);
+	QTableEntry Qroute = m_qtable[i];
 	return Qroute.nextId;
 }
 //search route for the q value, add into the header then next node can update its routing table and q table
@@ -124,12 +133,13 @@ double QRouting::SearchRouteForQvalue(uint32_t dstId) {
 
 	uint16_t i = 0; //count number
 	for (; it != m_qtable.end(); ++it) {
-		if (it->dstId == dstId /*&& it->RouteValid == true*/) {
+		if (it->dstId == dstId
+				&& it->dstId != 999/*&& it->RouteValid == true*/) {
 			break;
 		}
 		i++;
 	}
-	QTableEntry Qroute = m_qtable.at(i);
+	QTableEntry Qroute = m_qtable[i];
 	return Qroute.Qvalue;
 }
 //search route for the routing hop count, add into the header then next node can update its routing talbe and q table
@@ -138,12 +148,13 @@ uint32_t QRouting::SearchRouteForQHopCount(uint32_t dstId) {
 
 	uint16_t i = 0; //count number
 	for (; it != m_qtable.end(); ++it) {
-		if (it->dstId == dstId /*&& it->RouteValid == true*/) {
+		if (it->dstId == dstId
+				&& it->dstId != 999/*&& it->RouteValid == true*/) {
 			break;
 		}
 		i++;
 	}
-	QTableEntry Qroute = m_qtable.at(i);
+	QTableEntry Qroute = m_qtable[i];
 	return Qroute.HopCount;
 }
 
@@ -153,13 +164,13 @@ bool QRouting::RouteAvailable(uint32_t dstId) {
 
 	uint16_t i = 0;
 	for (; it != m_qtable.end(); ++it) {
-		if (it->dstId == dstId && it->RouteValid == true) {
+		if (it->dstId == dstId && it->RouteValid == true && it->dstId != 999) {
 			break;
 		}
 		i++;
 	}
-	QTableEntry Qroute = m_qtable.at(i);
-	if (Qroute.dstId != 0) {
+	//QTableEntry Qroute = m_qtable[i];
+	if (i < m_qtable.size()) {
 		return true;
 	} else {
 		return false;
@@ -171,12 +182,12 @@ uint32_t QRouting::LookUpPreNode(uint32_t dstId) {
 
 	uint16_t i = 0;
 	for (; it != m_prenode.end(); ++it) {
-		if (it->nodeId == dstId) {
+		if (it->nodeId == dstId && it->dstId != 999) {
 			break;
 		}
 		i++;
 	}
-	PreNodeEntry PreNode = m_prenode.at(i);
+	PreNodeEntry PreNode = m_prenode[i];
 	return PreNode.nodeId;
 }
 //选择一个deflect node
@@ -185,7 +196,7 @@ uint32_t QRouting::ChooseDeflectNode(uint32_t dstId, uint32_t routeNextId) {
 
 	uint16_t i = 0;
 	uint16_t j = 0; //用于比大小
-	PreNodeEntry PreNode;
+	//PreNodeEntry PreNode;
 	double qvalue;
 	PreNodeEntry cPreNode;
 	double cqvalue;
@@ -198,21 +209,26 @@ uint32_t QRouting::ChooseDeflectNode(uint32_t dstId, uint32_t routeNextId) {
 		}
 		i++;
 	}
-	for (; it != m_prenode.end(); ++it) {
-		if (it->nodeId == dstId && it->nodeId != routeNextId) {
-			cPreNode = m_prenode.at(j);
-			cqvalue = cPreNode.Qvalue;
-			qvalue = it->Qvalue;
-			if (qvalue + deltaT * it->RecRate
-					< cqvalue + deltaT * cPreNode.RecRate) { // 寻找最小值
-				j = i;
+	cPreNode = m_prenode[j];
+	cqvalue = cPreNode.Qvalue;
+	if (cqvalue != 0) {
+		for (; it != m_prenode.end(); ++it) {
+			if (it->nodeId == dstId && it->nodeId != routeNextId) {
+
+				qvalue = it->Qvalue;
+				if (qvalue + deltaT * it->RecRate
+						< cqvalue + deltaT * cPreNode.RecRate) { // 寻找最小值
+					j = i;
+					cPreNode = m_prenode[j];
+					cqvalue = cPreNode.Qvalue;
+				}
 			}
+			i++;
 		}
-		i++;
 	}
-	PreNode = m_prenode.at(i);
-	cPreNode = m_prenode.at(j);
-	if (PreNode.nodeId != 0) {
+	//PreNode = m_prenode.at(i);
+	//cPreNode = m_prenode.at(j);
+	if (i < m_prenode.size()) {
 		return cPreNode.nodeId;
 	} else {
 		return 0;
@@ -224,13 +240,13 @@ bool QRouting::SearchPreNode(uint32_t dstId, uint32_t nextId) {
 
 	uint16_t i = 0;
 	for (; it != m_prenode.end(); ++it) {
-		if (it->nodeId == dstId && it->nodeId == nextId) {
+		if (it->dstId == dstId && it->nodeId == nextId && it->dstId != 999) {
 			break;
 		}
 		i++;
 	}
-	PreNodeEntry PreNode = m_prenode.at(i);
-	if (PreNode.dstId != 0) {
+	//PreNodeEntry PreNode = m_prenode[i];
+	if (i < m_prenode.size()) {
 		return true;
 	} else {
 		return false;
@@ -244,12 +260,12 @@ double QRouting::UpdateQvalue(uint32_t dstId, double preReward,
 
 	uint16_t i;
 	for (; it != m_qtable.end(); ++it) {
-		if (it->dstId == dstId) {
+		if (it->dstId == dstId && it->dstId != 999) {
 			break;
 		}
 		i++;
 	}
-	QTableEntry Qroute = m_qtable.at(i);
+	QTableEntry Qroute = m_qtable[i];
 	double Reward = preReward / Qroute.HopCount - Qroute.Qvalue;
 	double Timenow = Simulator::Now().GetSeconds();
 	//update the q value
@@ -275,17 +291,17 @@ double QRouting::UpdateQvalue(uint32_t dstId, double preReward,
 }
 //update the routing table
 void QRouting::UpdateRoute(uint32_t dstId, uint32_t nextId, double Qvalue,
-		 uint32_t HopCount) {
+		uint32_t HopCount) {
 	uint16_t i; //count number
 	std::vector<QTableEntry>::iterator it = m_qtable.begin();
 
 	for (; it != m_qtable.end(); ++it) {
-		if (it->dstId == dstId) {
+		if (it->dstId == dstId && it->dstId != 999) {
 			break;
 		}
 		i++;
 	}
-	QTableEntry OldQroute = m_qtable.at(i);
+	QTableEntry OldQroute = m_qtable[i];
 	if (OldQroute.Qvalue > Qvalue) {
 		OldQroute.dstId = dstId;
 		OldQroute.nextId = nextId;
@@ -297,6 +313,8 @@ void QRouting::UpdateRoute(uint32_t dstId, uint32_t nextId, double Qvalue,
 
 	}
 }
+void QRouting::SendPacket(Ptr<Packet> p) {
+} //纯虚函数，但是也不定义，另外一个做法，在这里进行随机数的选择。
 //可以进行精简，把三个if相同的部分取出来
 void QRouting::SendPacketDst(Ptr<Packet> p, uint32_t dstNodeId) {
 	NS_LOG_FUNCTION(this<<p<<"size"<<p->GetSize());
@@ -313,7 +331,7 @@ void QRouting::SendPacketDst(Ptr<Packet> p, uint32_t dstNodeId) {
 	uint32_t deflectId = ChooseDeflectNode(dst, routenextId);
 
 	if (routenextId && routeava) { //如果目的地址不是邻居节点，但是在路由表上
-		//获取邻居节点号
+		//获取邻居节点号  路由表发送
 		nextId = LookupRoute(dst);
 		NS_LOG_FUNCTION(this<<"There is a route" << "nextId" << nextId);
 		NanoL3Header header;
@@ -378,7 +396,7 @@ void QRouting::SendPacketDst(Ptr<Packet> p, uint32_t dstNodeId) {
 					this<<p<<"no route, random choose, neighbors.size () > 0, try to select a nanonode");
 			srand(time(NULL));
 			int i = rand() % neighbors.size();
-			nextId = neighbors.at(i).first;
+			nextId = neighbors[i].first;
 		}
 		NS_LOG_FUNCTION(this<<"random choose a neighbor" << "nextId" << nextId);
 		NanoL3Header header;
@@ -411,59 +429,67 @@ void QRouting::SendPacketDst(Ptr<Packet> p, uint32_t dstNodeId) {
 void QRouting::ReceivePacket(Ptr<Packet> p) {
 	NS_LOG_FUNCTION(this<<p<<"size"<<p->GetSize());
 
-	//updte the q routing table and q value
-	NanoL3Header l3Header;
-	uint32_t from = l3Header.GetSource();
-	uint32_t to = l3Header.GetDestination();
-	uint32_t previous = l3Header.GetPrevious();
-	double qvalue = l3Header.GetQvalue();
-	uint32_t hopcount = l3Header.GetHopCount();
-	uint32_t qhopcount = l3Header.GetQHopCount();
-
-	if (hopcount == 1) {
-		if (!SearchPreNode(from, previous)) {
-			//add the q value table, i.e. the prenode
-			AddPreNodeNew(from, previous, qvalue, hopcount);
-			if (!LookupRoute(from)) {		//路由表中已经有记录了，就不行进行增加了
-				AddRoute(from, previous, qvalue, hopcount);
-			}
-			AddRoute(from, previous, qvalue, hopcount);
-		} else {
-			//也就是存在一跳的邻居节点和路由表。也就不用更新了，因为只有一跳。
-		}
-	} else {		//跳数大于一跳
-		if (!SearchPreNode(from, previous)) {
-			AddPreNodeNew(from, previous, qvalue, hopcount);
-			if (!LookupRoute(from)) {		//路由表中已经有记录了，就不行进行增加了
-				AddRoute(from, previous, qvalue, hopcount);
-			}
-
-		} else {
-			//也就是存在一跳的邻居节点和路由表。需要对q table i.e 邻居节点
-			//对routingtable 进行更新
-			double preReward = qvalue * (qhopcount + 1);
-			double newQvalue = UpdateQvalue(from, preReward, qhopcount);
-			UpdateRoute(from, previous, newQvalue, qhopcount);
-		}
-	}
 	NanoMacHeader macHeader;
 	p->RemoveHeader(macHeader);
-	//	uint32_t from = macHeader.GetSource();
-	//	uint32_t to  = macHeader.GetDestination();
+	//updte the q routing table and q value
+	uint32_t macfrom = macHeader.GetSource();
+	uint32_t macto = macHeader.GetDestination();
 	NS_LOG_FUNCTION(this<<macHeader);
 	NS_LOG_FUNCTION(this<<"my id"<<GetDevice()->GetNode()->GetId());
 
-	if (to == GetDevice()->GetNode()->GetId()) {
+	if (macto == GetDevice()->GetNode()->GetId()) {
 		NS_LOG_FUNCTION(this<<"is for me");
 		GetDevice()->GetMessageProcessUnit()->ProcessMessage(p);
-	} else {
-		NS_LOG_FUNCTION(this<<"forward!");
-		ForwardPacket(p, from);
-	}
 
+		NanoL3Header l3Header;
+		p->RemoveHeader(l3Header);	//这里删除了，后面就需要进行增加。
+		uint32_t from = l3Header.GetSource();
+		uint32_t to = l3Header.GetDestination();
+		uint32_t previous = l3Header.GetPrevious();
+		double qvalue = l3Header.GetQvalue();
+		uint32_t hopcount = l3Header.GetHopCount();
+		uint32_t qhopcount = l3Header.GetQHopCount();
+		uint32_t thisid = GetDevice()->GetNode()->GetId();
+		if (to == GetDevice()->GetNode()->GetId()) {
+			NS_LOG_FUNCTION(this<<"i am the destination");
+			if (hopcount == 1) {
+				if (!SearchPreNode(from, previous) && previous != thisid) {
+					//add the q value table, i.e. the prenode
+					AddPreNodeNew(from, previous, qvalue, hopcount);
+					if (!LookupRoute(from) && previous != thisid) {	//路由表中已经有记录了，就不行进行增加了
+						AddRoute(from, previous, qvalue, hopcount);
+					}
+					//AddRoute(from, previous, qvalue, hopcount);
+				} else {
+					//也就是存在一跳的邻居节点和路由表。也就不用更新了，因为只有一跳。
+				}
+			} else {		//跳数大于一跳
+				if (!SearchPreNode(from, previous)) {
+					AddPreNodeNew(from, previous, qvalue, hopcount);
+					if (!LookupRoute(from)) {		//路由表中已经有记录了，就不行进行增加了
+						AddRoute(from, previous, qvalue, hopcount);
+					}
+
+				} else {
+					//也就是存在一跳的邻居节点和路由表。需要对q table i.e 邻居节点
+					//对routingtable 进行更新
+					double preReward = qvalue * (qhopcount + 1);
+					double newQvalue = UpdateQvalue(from, preReward, qhopcount);
+					UpdateRoute(from, previous, newQvalue, qhopcount);
+				}
+			}
+		} else {
+			p->AddHeader(l3Header);
+			NS_LOG_FUNCTION(this<<"forward!");
+			ForwardPacket(p, macfrom);
+		}
+	}
 }
 
-void QRouting::ForwardPacket(Ptr<Packet> p, uint32_t fromNodeId) {
+void QRouting::ForwardPacket(Ptr<Packet> p) {
+}
+
+void QRouting::ForwardPacket(Ptr<Packet> p, uint32_t macfrom) {
 	NS_LOG_FUNCTION(this);
 	uint32_t nextId = GetDevice()->GetNode()->GetId();	//如果找不到就给自己。
 
@@ -471,7 +497,7 @@ void QRouting::ForwardPacket(Ptr<Packet> p, uint32_t fromNodeId) {
 	p->RemoveHeader(l3Header);
 	uint32_t id = l3Header.GetPacketId();
 	NS_LOG_FUNCTION(this<<l3Header);
-	NS_LOG_FUNCTION(this<<"packet id"<< id<< "from"<<fromNodeId);
+	NS_LOG_FUNCTION(this<<"packet id"<< id<< "from"<<macfrom);
 
 	uint32_t from = l3Header.GetSource();
 	uint32_t to = l3Header.GetDestination();
@@ -532,7 +558,7 @@ void QRouting::ForwardPacket(Ptr<Packet> p, uint32_t fromNodeId) {
 						this<<"no route, random choose, neighbors.size()>0,try to select a nanonode");
 				srand(time(NULL));
 				int i = rand() % neighbors.size();
-				nextId = neighbors.at(i).first;
+				nextId = neighbors[i].first;
 			}
 			NS_LOG_FUNCTION(this<<"random choose a neighbor"<<"nextId"<<nextId);
 			headerQvalue = SearchRouteForQvalue(from);
