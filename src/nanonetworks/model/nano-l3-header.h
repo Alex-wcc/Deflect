@@ -86,10 +86,10 @@ public:
   uint32_t GetPacketId () const;
 
 //for the q value and hop count
-  void SetQvalue(double qvalue);
+  void SetQvalue(uint32_t qvalue);
   uint32_t GetQvalue() const;
 
-  void SetHopCount(int hopcount);
+  void SetHopCount(uint32_t hopcount);
   uint32_t GetHopCount() const;
 
   void SetPrevious(uint32_t previous);

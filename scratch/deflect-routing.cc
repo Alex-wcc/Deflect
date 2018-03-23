@@ -171,7 +171,7 @@ void Run(int nbNanoNodes, double txRangeNanoNodes, int macType, int l3Type,
 	mobility.Install(n_nodes);
 
 	//protocol stack
-	for (uint32_t i = 0; i < d_nodes.GetN(); i++) {
+	for (uint16_t i = 0; i < d_nodes.GetN(); i++) {
 		Ptr<MobilityModel> m = n_nodes.Get(i)->GetObject<MobilityModel>();
 		nano.AddMobility(d_nodes.Get(i)->GetObject<NanoNodeDevice>()->GetPhy(),
 				m);
@@ -234,7 +234,7 @@ void Run(int nbNanoNodes, double txRangeNanoNodes, int macType, int l3Type,
 				mpu);
 		mpu->SetInterarrivalTime(packetInterval);
 		//生成随机目的地址；
-		uint32_t dstId = (rand() % (200 - 1 + 1)) + 1;
+		uint16_t dstId = (rand() % (200 - 1 + 1)) + 1;
 		mpu->SetDstId(dstId);
 
 		double startTime = random->GetValue(0.0, 0.1);

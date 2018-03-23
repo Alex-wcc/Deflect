@@ -37,7 +37,7 @@ TypeId NanoL3Header::GetInstanceTypeId(void) const {
 }
 
 uint32_t NanoL3Header::GetSerializedSize(void) const {
-	return 4 + 4 + 4 + 4 + 4 + 4 + 4;
+	return 4 + 4 + 4 + 4 + 4 + 4 + 4 + 4;
 }
 
 void NanoL3Header::Serialize(Buffer::Iterator start) const {
@@ -45,8 +45,8 @@ void NanoL3Header::Serialize(Buffer::Iterator start) const {
 	start.WriteHtonU32(m_destination);
 	start.WriteHtonU32(m_ttl);
 	start.WriteHtonU32(m_packetId);
-	start.WriteHtonU32(m_hopcount);
 	start.WriteHtonU32(m_intqvalue);
+	start.WriteHtonU32(m_hopcount);
 	start.WriteHtonU32(m_previous);
 	start.WriteHtonU32(m_qhopcount);
 
@@ -105,13 +105,13 @@ uint32_t NanoL3Header::GetPacketId() const {
 	return m_packetId;
 }
 
-void NanoL3Header::SetQvalue(double qvalue) {
-	m_qvalue = qvalue;
+void NanoL3Header::SetQvalue(uint32_t qvalue) {
+	m_intqvalue = qvalue;
 }
 uint32_t NanoL3Header::GetQvalue() const {
 	return m_intqvalue;
 }
-void NanoL3Header::SetHopCount(int hopcount) {
+void NanoL3Header::SetHopCount(uint32_t hopcount) {
 	m_hopcount = hopcount;
 }
 uint32_t NanoL3Header::GetHopCount() const {
