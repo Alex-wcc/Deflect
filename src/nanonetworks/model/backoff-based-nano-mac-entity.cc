@@ -146,6 +146,7 @@ BackoffBasedNanoMacEntity::Send (Ptr<Packet> p, uint32_t nextId)
   p->AddHeader (header);
 
   m_queue.push_back (p);
+
   //std::cout << Simulator::Now().GetSeconds() <<"\n";
   if (m_queue.size () == 1)
 	{

@@ -125,10 +125,35 @@ uint32_t QRouting::LookupRoute(uint32_t dstId) {
 		i++;
 	}
 	if (i < m_qtable.size()) {
-		QTableEntry Qroute = m_qtable[i];
+		QTableEntry Qroute = m_qtable.at(i);
 		return Qroute.nextId;
 	} else {
 		return 991; //不存在路由
+	}
+}
+void QRouting::SetRouteUn(uint32_t nextId) {
+	std::vector<QTableEntry>::iterator it = m_qtable.begin();
+
+	uint16_t i = 0; //count number
+	for (; it != m_qtable.end(); ++it) {
+		if (it->nextId == nextId
+				&& it->dstId != 999/*&& it->RouteValid == true*/) {
+
+			it->RouteValid = false;
+		}
+		i++;
+	}
+}
+void QRouting::SetRouteAv(uint32_t nextId) {
+	std::vector<QTableEntry>::iterator it = m_qtable.begin();
+
+	uint16_t i = 0; //count number
+	for (; it != m_qtable.end(); ++it) {
+		if (it->nextId == nextId
+				&& it->dstId != 999/*&& it->RouteValid == true*/) {
+			it->RouteValid = true;
+		}
+		i++;
 	}
 }
 //search route for the q value, add into the header then next node can update its routing table and q table
@@ -213,35 +238,34 @@ uint32_t QRouting::ChooseDeflectNode(uint32_t dstId, uint32_t routeNextId) {
 	uint16_t i = 0;
 	uint16_t j = 0; //用于比大小
 	//PreNodeEntry PreNode;
-	double qvalue;
+	//double qvalue;
 	PreNodeEntry cPreNode;
-	double cqvalue;
+	//double cqvalue;
 	double deltaT = Simulator::Now().GetSeconds();
 
 	for (; it != m_prenode.end(); ++it) {
-		if (it->nodeId == dstId && it->nodeId != routeNextId) {
+		if (it->dstId == dstId && it->nodeId != routeNextId) {
 			j = i;
 			break;
 		}
 		i++;
 	}
 	cPreNode = m_prenode[j];
-	cqvalue = cPreNode.Qvalue;
-	if (cqvalue != 0) {
-		for (; it != m_prenode.end(); ++it) {
-			if (it->nodeId == dstId && it->nodeId != routeNextId) {
+	//cqvalue = cPreNode.Qvalue;
 
-				qvalue = it->Qvalue;
-				if (qvalue + deltaT * it->RecRate
-						< cqvalue + deltaT * cPreNode.RecRate) { // 寻找最小值
-					j = i;
-					cPreNode = m_prenode[j];
-					cqvalue = cPreNode.Qvalue;
-				}
+	for (int i = 0; it != m_prenode.end(); ++it) {
+		if (it->dstId == dstId && it->nodeId != routeNextId) {
+
+			if (it->Qvalue + (deltaT - it->UpTime) * it->RecRate
+					< cPreNode.Qvalue
+							+ (deltaT - cPreNode.UpTime) * cPreNode.RecRate) { // 寻找最小值
+				j = i;
+				cPreNode = m_prenode[j];
 			}
-			i++;
 		}
+		i++;
 	}
+
 	//PreNode = m_prenode.at(i);
 	//cPreNode = m_prenode.at(j);
 	if (i < m_prenode.size()) {
@@ -377,7 +401,13 @@ void QRouting::SendPacketDst(Ptr<Packet> p, uint32_t dstNodeId) {
 
 	uint32_t routenextId = LookupRoute(dst);
 	bool routeava = RouteAvailable(dst);
-	uint32_t deflectId = ChooseDeflectNode(dst, routenextId);
+	uint32_t deflectId;
+	if (routenextId != 991) {
+		deflectId = ChooseDeflectNode(dst, routenextId);
+	}
+	if (deflectId != 995) {
+		routenextId = LookupRoute(dst);
+	}
 
 	if (routenextId != 991 && routeava) { //如果目的地址不是邻居节点，但是在路由表上
 		//获取邻居节点号  路由表发送
@@ -423,7 +453,9 @@ void QRouting::SendPacketDst(Ptr<Packet> p, uint32_t dstNodeId) {
 
 	Ptr<NanoMacEntity> mac = GetDevice()->GetMac();
 	//这里需要将路由表置位
+	SetRouteUn(nextId);
 	mac->Send(p, nextId);
+	SetRouteAv(nextId);
 	//这里需要将路由表置位
 
 }
@@ -454,42 +486,44 @@ void QRouting::ReceivePacket(Ptr<Packet> p) {
 		uint32_t qhopcount = l3Header.GetQHopCount();
 
 		uint32_t thisid = GetDevice()->GetNode()->GetId();
-		if (to == GetDevice()->GetNode()->GetId()) {
-			NS_LOG_FUNCTION(this<<"i am the destination");
-			GetDevice()->GetMessageProcessUnit()->ProcessMessage(p);
-			if (hopcount == 1) {
-				if (!SearchPreNode(from, previous) && previous != thisid) {
-					//add the q value table, i.e. the prenode
-					AddPreNodeNew(from, previous, qvalue, hopcount);
-					uint32_t route = LookupRoute(from);
-					if (route == 991 && previous != thisid) {//路由表中已经有记录了，就不行进行增加了
-						AddRoute(from, previous, qvalue, hopcount);
-					}
-					//AddRoute(from, previous, qvalue, hopcount);
-				} else {
-					//也就是存在一跳的邻居节点和路由表。也就不用更新了，因为只有一跳。
-				}
-			} else {		//跳数大于一跳
-				if (!SearchPreNode(from, previous) && previous != thisid) {
-					AddPreNodeNew(from, previous, qvalue, hopcount);
-					uint32_t route = LookupRoute(from);
-					if (route == 991) {		//路由表中已经有记录了，就不行进行增加了
-						AddRoute(from, previous, qvalue, hopcount);
-					}
 
+		bool PreNodeE = SearchPreNode(from, previous);
+		if (hopcount == 1) {
+			if (!PreNodeE && previous != thisid) {
+				//add the q value table, i.e. the prenode
+				AddPreNodeNew(from, previous, qvalue, hopcount);
+				uint32_t route = LookupRoute(from);
+				if (route == 991 && previous != thisid) {//路由表中已经有记录了，就不行进行增加了
+					AddRoute(from, previous, qvalue, hopcount);
+				}
+				//AddRoute(from, previous, qvalue, hopcount);
+			} else {
+				//也就是存在一跳的邻居节点。也就不用更新了，因为只有一跳。
+			}
+		} else {		//跳数大于一跳
+			if (!PreNodeE && previous != thisid) {
+				AddPreNodeNew(from, previous, qvalue, hopcount);
+				uint32_t route = LookupRoute(from);
+				if (route == 991 && previous != thisid) {//路由表中已经有记录了，就不行进行增加了
+					AddRoute(from, previous, qvalue, hopcount);
+				}
+
+			} else if (PreNodeE && previous != thisid) {
+				//
+				//对routingtable 进行更新
+				uint32_t preReward = qvalue * (qhopcount + 1);
+				UpdatePreNode(from, previous, preReward, qhopcount);
+				uint32_t newQvalue = UpdateQvalue(from, preReward, qhopcount);//更新路由表上的Q值
+				if (newQvalue == 996) {
 				} else {
-					//也就是存在一跳的邻居节点和路由表。需要对q table i.e 邻居节点
-					//对routingtable 进行更新
-					double preReward = qvalue * (qhopcount + 1);
-					UpdatePreNode(from, previous, preReward, qhopcount);
-					uint32_t newQvalue = UpdateQvalue(from, preReward,
-							qhopcount);
-					if (newQvalue == 996) {
-					} else {
-						UpdateRoute(from, previous, newQvalue, qhopcount);
-					}
+					UpdateRoute(from, previous, newQvalue, qhopcount);
 				}
 			}
+		}
+		if (to == GetDevice()->GetNode()->GetId()) {
+			NS_LOG_FUNCTION(this<<"i am the destination");
+			p->AddHeader(l3Header);
+			GetDevice()->GetMessageProcessUnit()->ProcessMessage(p);
 		} else {
 			p->AddHeader(l3Header);
 			NS_LOG_FUNCTION(this<<"forward!");
@@ -516,12 +550,15 @@ void QRouting::ForwardPacket(Ptr<Packet> p, uint32_t macfrom) {
 	uint32_t headerQvalue = l3Header.GetQvalue();	//
 	uint32_t hopcount = l3Header.GetHopCount();	//
 	uint32_t ttl = l3Header.GetTtl();
-	uint32_t qhopcount = l3Header.GetQHopCount()+1;
+	uint32_t qhopcount = l3Header.GetQHopCount() + 1;
 
 	uint32_t routenextId = LookupRoute(to);
 	bool routeava = RouteAvailable(to);
 	uint32_t deflectedId = ChooseDeflectNode(to, routenextId);
 
+	if (deflectedId != 995) {
+		routenextId = LookupRoute(to);
+	}
 	uint32_t thisid = GetDevice()->GetNode()->GetId();
 	if (ttl > 1) {
 		if (routenextId != 991 && routeava) {
@@ -559,7 +596,11 @@ void QRouting::ForwardPacket(Ptr<Packet> p, uint32_t macfrom) {
 		NS_LOG_FUNCTION(this<<"forward new l3 header"<<l3Header);
 		p->AddHeader(l3Header);
 		Ptr<NanoMacEntity> mac = GetDevice()->GetMac();
+		//这里将路由表置位
+		SetRouteUn(nextId);
 		mac->Send(p, nextId);
+		SetRouteAv(nextId);
+		//这里将路由表置位
 	} else {
 		NS_LOG_FUNCTION(this<<"ttl expired");
 	}

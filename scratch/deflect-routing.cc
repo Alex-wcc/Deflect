@@ -33,6 +33,7 @@
 #include "ns3/random-nano-routing-entity.h"
 #include "ns3/flooding-nano-routing-entity.h"
 #include "ns3/q-routing.h"
+#include "ns3/netanim-module.h"
 
 NS_LOG_COMPONENT_DEFINE("deflect-routing");
 
@@ -41,8 +42,9 @@ using namespace ns3;
 void Run(int nbNanoNodes, double txRangeNanoNodes, int macType, int l3Type,
 		int seed);
 
-void PrintTXEvents(Ptr<OutputStreamWrapper> stream, int, int);
-void PrintRXEvents(Ptr<OutputStreamWrapper> stream, int, int, int, int, double);
+void PrintTXEvents(Ptr<OutputStreamWrapper> stream, int, int, int);
+void PrintRXEvents(Ptr<OutputStreamWrapper> stream, int, int, int, int, double,
+		int, int, int);
 void PrintPHYTXEvents(Ptr<OutputStreamWrapper> stream, int, int);
 void PrintPHYCOLLEvents(Ptr<OutputStreamWrapper> stream, int, int);
 void PrintSimulationTime(double duration);
@@ -50,7 +52,7 @@ void PrintSimulationTime(double duration);
 void PrintMemoryUsage(void);
 
 int main(int argc, char *argv[]) {
-	int nbNanoNodes = 200;
+	int nbNanoNodes = 30;
 	double txRangeNanoNodes = 0.1;
 	int macType = 2;
 	int l3Type = 3; //deflection routing
@@ -80,12 +82,12 @@ void Run(int nbNanoNodes, double txRangeNanoNodes, int macType, int l3Type,
 
 	//timers
 	Time::SetResolution(Time::FS);
-	double duration = 5;
+	double duration = 30;
 
 	//layout details
-	double xrange = 1;
-	double yrange = 0.001; //为什么y轴也是0呢？但是画出来的话明明有xy值呀。
-	double zrange = 0.001;
+	double xrange = 0.5;
+	double yrange = 0.5; //为什么y轴也是0呢？但是画出来的话明明有xy值呀。
+	//double zrange = 0.001;
 
 	//physical details
 	double pulseEnergy = 100e-12;
@@ -147,35 +149,46 @@ void Run(int nbNanoNodes, double txRangeNanoNodes, int macType, int l3Type,
 	d_nodes = nano.Install(n_nodes, NanoHelper::nanonode);
 
 	//mobility need to revised it
-	MobilityHelper mobility;
+/*MobilityHelper mobility;
 	mobility.SetMobilityModel("ns3::GaussMarkovMobilityModel", "Bounds",
 			BoxValue(Box(0, xrange, 0, yrange, 0, zrange)), "TimeStep",
 			TimeValue(Seconds(0.001)), "Alpha", DoubleValue(0), "MeanVelocity",
-			StringValue("ns3::UniformRandomVariable[Min=0.2|Max=0.2]"),
+			StringValue("ns3::UniformRandomVariable[Min=0.01|Max=0.01]"),
 			"MeanDirection",
 			StringValue("ns3::UniformRandomVariable[Min=0|Max=0]"), "MeanPitch",
-			StringValue("ns3::UniformRandomVariable[Min=0.05|Max=0.05]"),
+			StringValue("ns3::UniformRandomVariable[Min=0.01|Max=0.01]"),
 			"NormalVelocity",
 			StringValue(
 					"ns3::NormalRandomVariable[Mean=0.0|Variance=0.0|Bound=0.0]"),
 			"NormalDirection",
 			StringValue(
-					"ns3::NormalRandomVariable[Mean=0.0|Variance=0.2|Bound=0.4]"),
+					"ns3::NormalRandomVariable[Mean=0.0|Variance=0.1|Bound=0.2]"),
 			"NormalPitch",
 			StringValue(
-					"ns3::NormalRandomVariable[Mean=0.0|Variance=0.2|Bound=0.4]"));
+					"ns3::NormalRandomVariable[Mean=0.0|Variance=0.1|Bound=0.4]"));
 	mobility.SetPositionAllocator("ns3::RandomBoxPositionAllocator", "X",
-			StringValue("ns3::UniformRandomVariable[Min=0.0|Max=0.15]"),//RandomVariableValue (UniformVariable (0, xrange)),
-			"Y", StringValue("ns3::UniformRandomVariable[Min=0.0|Max=0.001]"),//RandomVariableValue (UniformVariable (0, yrange)),
+			StringValue("ns3::UniformRandomVariable[Min=0.0|Max=0.5]"),//RandomVariableValue (UniformVariable (0, xrange)),
+			"Y", StringValue("ns3::UniformRandomVariable[Min=0.0|Max=0.5]"),//RandomVariableValue (UniformVariable (0, yrange)),
 			"Z", StringValue("ns3::UniformRandomVariable[Min=0.0|Max=0.001]"));	//RandomVariableValue (UniformVariable (0, zrange)));
-	mobility.Install(n_nodes);
+	mobility.Install(n_nodes);*/
 
 	//protocol stack
 	for (uint16_t i = 0; i < d_nodes.GetN(); i++) {
-		Ptr<MobilityModel> m = n_nodes.Get(i)->GetObject<MobilityModel>();
-		nano.AddMobility(d_nodes.Get(i)->GetObject<NanoNodeDevice>()->GetPhy(),
-				m);
 		Ptr<NanoNodeDevice> dev = d_nodes.Get(i)->GetObject<NanoNodeDevice>();
+		Ptr<MobilityModel> m = n_nodes.Get(i)->GetObject<MobilityModel>();
+		//with no mobility
+		Ptr<ConstantPositionMobilityModel> mm = CreateObject<
+				ConstantPositionMobilityModel>();
+		uint16_t x = (rand() % (nbNanoNodes - 1 + 1)) + 1;
+		uint16_t y = (rand() % (nbNanoNodes - 1 + 1)) + 1;
+		mm->SetPosition(
+				Vector(x * (xrange / nbNanoNodes), y * (yrange / nbNanoNodes),
+						0.0));
+
+
+		nano.AddMobility(d_nodes.Get(i)->GetObject<NanoNodeDevice>()->GetPhy(),
+				mm);
+
 
 		Ptr<NanoRoutingEntity> routing;
 		if (l3Type == 1) {
@@ -186,12 +199,10 @@ void Run(int nbNanoNodes, double txRangeNanoNodes, int macType, int l3Type,
 			Ptr<RandomNanoRoutingEntity> routing2 = CreateObject<
 					RandomNanoRoutingEntity>();
 			routing = routing2;
-		}else if (l3Type ==3)
-		{
+		} else if (l3Type == 3) {
 			Ptr<QRouting> routing3 = CreateObject<QRouting>();
 			routing = routing3;
-		}
-		else {
+		} else {
 		}
 		routing->SetDevice(dev);
 		dev->SetL3(routing);
@@ -234,7 +245,7 @@ void Run(int nbNanoNodes, double txRangeNanoNodes, int macType, int l3Type,
 				mpu);
 		mpu->SetInterarrivalTime(packetInterval);
 		//生成随机目的地址；
-		uint16_t dstId = (rand() % (200 - 1 + 1)) + 1;
+		uint16_t dstId = (rand() % (nbNanoNodes - 1 + 1)) + 1;
 		mpu->SetDstId(dstId);
 
 		double startTime = random->GetValue(0.0, 0.1);
@@ -246,6 +257,7 @@ void Run(int nbNanoNodes, double txRangeNanoNodes, int macType, int l3Type,
 				MakeBoundCallback(&PrintRXEvents, streamRX));
 	}
 
+
 	Simulator::Stop(Seconds(duration));
 	Simulator::Schedule(Seconds(0.), &PrintSimulationTime, duration);
 	Simulator::Schedule(Seconds(duration - 0.1), &PrintMemoryUsage);
@@ -256,17 +268,18 @@ void Run(int nbNanoNodes, double txRangeNanoNodes, int macType, int l3Type,
 
 void PrintMemoryUsage(void) {
 	system(
-			"ps aux | grep build/scratch/health-care | head -1 | awk '{print $1, $4, $10}'");
+			"ps aux | grep build/scratch/deflect-routing | head -1 | awk '{print $1, $4, $10}'");
 }
 
-void PrintTXEvents(Ptr<OutputStreamWrapper> stream, int id, int src) {
-	*stream->GetStream() << src << " " << id << std::endl;
+void PrintTXEvents(Ptr<OutputStreamWrapper> stream, int id, int src, int src2) {
+	*stream->GetStream() << src << " " << id << " " << " " << src2 << std::endl;
 }
 
 void PrintRXEvents(Ptr<OutputStreamWrapper> stream, int id, int size, int src,
-		int thisNode, double delay) {
-	*stream->GetStream() << thisNode << " " << id << " " << size << " " << delay
-			<< std::endl;
+		int thisNode, double delay, int ttl, int hopcount, int qhopcount) {
+	*stream->GetStream() << src << " " << thisNode << " " << id << " "
+			<< hopcount << " " << qhopcount << " " << size << " " << delay
+			<< " " << std::endl;
 }
 
 void PrintPHYCOLLEvents(Ptr<OutputStreamWrapper> stream, int id, int thisNode) {

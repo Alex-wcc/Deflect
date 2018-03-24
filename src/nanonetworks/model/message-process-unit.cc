@@ -65,7 +65,7 @@ MessageProcessUnit::~MessageProcessUnit ()
   NS_LOG_FUNCTION (this);
 }
 
-void 
+void
 MessageProcessUnit::DoDispose (void)
 {
   NS_LOG_FUNCTION (this);
@@ -99,7 +99,7 @@ MessageProcessUnit::CreteMessage ()
   seqTs.SetSeq (p->GetUid ());
   p->AddHeader (seqTs);
 
-  m_outTX ((int)p->GetUid (), (int)GetDevice ()->GetNode ()->GetId ());
+  m_outTX ((int)p->GetUid (), (int)GetDevice ()->GetNode ()->GetId (),(int)m_dstId);
 
   m_device->SendPacketDst (p,m_dstId);
   Simulator::Schedule (Seconds (m_interarrivalTime), &MessageProcessUnit::CreteMessage, this);
@@ -121,7 +121,7 @@ MessageProcessUnit::ProcessMessage (Ptr<Packet> p)
 
   double delay = Simulator::Now ().GetPicoSeconds () - seqTs.GetTs ().GetPicoSeconds ();
 
-  m_outRX (seqTs.GetSeq (), p->GetSize (), (int)l3Header.GetSource (), (int)GetDevice ()->GetNode ()->GetId (), delay);
+  m_outRX (seqTs.GetSeq (), p->GetSize (), (int)l3Header.GetSource (), (int)GetDevice ()->GetNode ()->GetId (), delay,(int)l3Header.GetTtl(),(int)l3Header.GetHopCount(),(int)l3Header.GetQHopCount());
 }
 
 

@@ -35,39 +35,37 @@ class SimpleNanoDevice;
  *
  * This class provides
  */
-class MessageProcessUnit : public Object
-{
+class MessageProcessUnit: public Object {
 public:
-  static TypeId GetTypeId (void);
+	static TypeId GetTypeId(void);
 
-  MessageProcessUnit (void);
-  virtual ~MessageProcessUnit (void);
+	MessageProcessUnit(void);
+	virtual ~MessageProcessUnit(void);
 
-  virtual void DoDispose (void);
+	virtual void DoDispose(void);
 
-  void SetDevice (Ptr<SimpleNanoDevice> d);
-  Ptr<SimpleNanoDevice> GetDevice (void);
+	void SetDevice(Ptr<SimpleNanoDevice> d);
+	Ptr<SimpleNanoDevice> GetDevice(void);
 
-  void CreteMessage ();
-  void ProcessMessage (Ptr<Packet> p);
+	void CreteMessage();
+	void ProcessMessage(Ptr<Packet> p);
 
-  void SetPacketSize (int s);
-  void SetInterarrivalTime (double t);
-  void SetDstId (uint32_t dstId);
+	void SetPacketSize(int s);
+	void SetInterarrivalTime(double t);
+	void SetDstId(uint32_t dstId);
 
 private:
 
-  Ptr<SimpleNanoDevice> m_device;
-  int m_packetSize;
-  double m_interarrivalTime;
-  uint32_t m_dstId;
+	Ptr<SimpleNanoDevice> m_device;
+	int m_packetSize;
+	double m_interarrivalTime;
+	uint32_t m_dstId;
 
-  typedef void (* OutTxCallback) (int, int);
-  typedef void (* OutRxCallback) (int, int, int, int, double);
-  TracedCallback<int, int> m_outTX;
-  TracedCallback<int, int, int, int, double> m_outRX;
+	typedef void (*OutTxCallback)(int, int, int);
+	typedef void (*OutRxCallback)(int, int, int, int, double, int, int, int);
+	TracedCallback<int, int, int> m_outTX;
+	TracedCallback<int, int, int, int, double, int, int, int> m_outRX;
 };
-
 
 } // namespace ns3
 

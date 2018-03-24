@@ -45,6 +45,9 @@ public:
 	void AddPreNodeNew(uint32_t distId, uint32_t nextID, uint32_t Qvalue, uint32_t HopCount);
 	void UpdatePreNode(uint32_t dstId, uint32_t nextId, uint32_t reward, uint32_t HopCount);
 
+	void SetRouteUn(uint32_t nextId);
+	void SetRouteAv(uint32_t nextId);
+
 	typedef struct {
 		uint32_t dstId;
 		uint32_t nextId;
