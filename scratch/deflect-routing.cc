@@ -53,7 +53,7 @@ void PrintMemoryUsage(void);
 
 int main(int argc, char *argv[]) {
 	int nbNanoNodes = 30;
-	double txRangeNanoNodes = 0.1;
+	double txRangeNanoNodes = 0.015;
 	int macType = 2;
 	int l3Type = 3; //deflection routing
 	int seed = 1;
@@ -82,11 +82,11 @@ void Run(int nbNanoNodes, double txRangeNanoNodes, int macType, int l3Type,
 
 	//timers
 	Time::SetResolution(Time::FS);
-	double duration = 30;
+	double duration = 5;
 
 	//layout details
-	double xrange = 0.5;
-	double yrange = 0.5; //为什么y轴也是0呢？但是画出来的话明明有xy值呀。
+	double xrange = 0.05;
+	double yrange = 0.05; //为什么y轴也是0呢？但是画出来的话明明有xy值呀。
 	//double zrange = 0.001;
 
 	//physical details
@@ -153,22 +153,22 @@ void Run(int nbNanoNodes, double txRangeNanoNodes, int macType, int l3Type,
 	mobility.SetMobilityModel("ns3::GaussMarkovMobilityModel", "Bounds",
 			BoxValue(Box(0, xrange, 0, yrange, 0, zrange)), "TimeStep",
 			TimeValue(Seconds(0.001)), "Alpha", DoubleValue(0), "MeanVelocity",
-			StringValue("ns3::UniformRandomVariable[Min=0.01|Max=0.01]"),
+			StringValue("ns3::UniformRandomVariable[Min=0.00|Max=0.00]"),
 			"MeanDirection",
 			StringValue("ns3::UniformRandomVariable[Min=0|Max=0]"), "MeanPitch",
-			StringValue("ns3::UniformRandomVariable[Min=0.01|Max=0.01]"),
+			StringValue("ns3::UniformRandomVariable[Min=0.00|Max=0.00]"),
 			"NormalVelocity",
 			StringValue(
 					"ns3::NormalRandomVariable[Mean=0.0|Variance=0.0|Bound=0.0]"),
 			"NormalDirection",
 			StringValue(
-					"ns3::NormalRandomVariable[Mean=0.0|Variance=0.1|Bound=0.2]"),
+					"ns3::NormalRandomVariable[Mean=0.0|Variance=0.0|Bound=0.0]"),
 			"NormalPitch",
 			StringValue(
-					"ns3::NormalRandomVariable[Mean=0.0|Variance=0.1|Bound=0.4]"));
+					"ns3::NormalRandomVariable[Mean=0.0|Variance=0.0|Bound=0.0]"));
 	mobility.SetPositionAllocator("ns3::RandomBoxPositionAllocator", "X",
-			StringValue("ns3::UniformRandomVariable[Min=0.0|Max=0.5]"),//RandomVariableValue (UniformVariable (0, xrange)),
-			"Y", StringValue("ns3::UniformRandomVariable[Min=0.0|Max=0.5]"),//RandomVariableValue (UniformVariable (0, yrange)),
+			StringValue("ns3::UniformRandomVariable[Min=0.0|Max=0.15]"),//RandomVariableValue (UniformVariable (0, xrange)),
+			"Y", StringValue("ns3::UniformRandomVariable[Min=0.0|Max=0.01]"),//RandomVariableValue (UniformVariable (0, yrange)),
 			"Z", StringValue("ns3::UniformRandomVariable[Min=0.0|Max=0.001]"));	//RandomVariableValue (UniformVariable (0, zrange)));
 	mobility.Install(n_nodes);*/
 
@@ -185,10 +185,8 @@ void Run(int nbNanoNodes, double txRangeNanoNodes, int macType, int l3Type,
 				Vector(x * (xrange / nbNanoNodes), y * (yrange / nbNanoNodes),
 						0.0));
 
-
 		nano.AddMobility(d_nodes.Get(i)->GetObject<NanoNodeDevice>()->GetPhy(),
 				mm);
-
 
 		Ptr<NanoRoutingEntity> routing;
 		if (l3Type == 1) {
@@ -245,7 +243,9 @@ void Run(int nbNanoNodes, double txRangeNanoNodes, int macType, int l3Type,
 				mpu);
 		mpu->SetInterarrivalTime(packetInterval);
 		//生成随机目的地址；
-		uint16_t dstId = (rand() % (nbNanoNodes - 1 + 1)) + 1;
+		//srand(time(NULL));
+	    srand(time(NULL));//这个随机数？？？？
+	    uint32_t dstId = (rand() % (100-1 - 0 + 1)) + 0;
 		mpu->SetDstId(dstId);
 
 		double startTime = random->GetValue(0.0, 0.1);

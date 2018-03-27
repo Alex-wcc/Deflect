@@ -405,9 +405,7 @@ void QRouting::SendPacketDst(Ptr<Packet> p, uint32_t dstNodeId) {
 	if (routenextId != 991) {
 		deflectId = ChooseDeflectNode(dst, routenextId);
 	}
-	if (deflectId != 995) {
-		routenextId = LookupRoute(dst);
-	}
+
 
 	if (routenextId != 991 && routeava) { //如果目的地址不是邻居节点，但是在路由表上
 		//获取邻居节点号  路由表发送
@@ -424,7 +422,7 @@ void QRouting::SendPacketDst(Ptr<Packet> p, uint32_t dstNodeId) {
 		if (neighbors.size() != 0) {
 			NS_LOG_FUNCTION(
 					this<<p<<"no route, random choose, neighbors.size () > 0, try to select a nanonode");
-			srand(time(NULL));
+			srand(time(NULL));//这个随机数？？？？
 			int i = rand() % neighbors.size();
 			nextId = neighbors[i].first;
 		}
@@ -553,41 +551,76 @@ void QRouting::ForwardPacket(Ptr<Packet> p, uint32_t macfrom) {
 	uint32_t qhopcount = l3Header.GetQHopCount() + 1;
 
 	uint32_t routenextId = LookupRoute(to);
-	bool routeava = RouteAvailable(to);
-	uint32_t deflectedId = ChooseDeflectNode(to, routenextId);
-
-	if (deflectedId != 995) {
-		routenextId = LookupRoute(to);
+	uint32_t deflectedId = 995;
+	bool PalreadySent;
+	bool TalreadySent;
+	if (routenextId != 991) {
+		TalreadySent = CheckAmongSentPacket(id, routenextId);
 	}
+	bool routeava = RouteAvailable(to);
+	if (!routeava) {
+		deflectedId = ChooseDeflectNode(to, routenextId);
+		if (deflectedId != 995) {
+			PalreadySent = CheckAmongSentPacket(id, deflectedId);
+		}
+	}
+
+	/*	if (deflectedId != 995) {
+	 routenextId = LookupRoute(to);
+	 }*/
 	uint32_t thisid = GetDevice()->GetNode()->GetId();
 	if (ttl > 1) {
-		if (routenextId != 991 && routeava) {
+		if (routenextId != 991 && routeava && !TalreadySent) {
 			nextId = routenextId;
 			NS_LOG_FUNCTION(this<<"Forward there is route"<<"nextId"<<nextId);
-
 			// 获得 from ，previous 对应的qvalue 和hopcount；
 			headerQvalue = SearchRouteForQvalue(from);
 			qhopcount = SearchRouteForQHopCount(from);
-		} else if (routenextId != 991 && !routeava && deflectedId != 995) {
+		} else if (routenextId != 991 && !routeava && deflectedId != 995
+				&& !PalreadySent) {
 			nextId = deflectedId;
 			NS_LOG_FUNCTION(
 					this<<"Forward the packet is deflected"<<"nextId"<<nextId);
-
 			// 获得 from ，previous 对应的qvalue 和hopcount；
 			headerQvalue = SearchRouteForQvalue(from);
 			qhopcount = SearchRouteForQHopCount(from);
 		} else {
+			std::vector<std::pair<uint32_t, uint32_t>> newNeighbors;
+			//std::vector<std::pair<uint32_t, uint32_t>> newNeighbors2;
+
 			std::vector<std::pair<uint32_t, uint32_t>> neighbors =
 					GetDevice()->GetMac()->m_neighbors;
-			if (neighbors.size() != 0) {
-				NS_LOG_FUNCTION(
-						this<<"no route, random choose, neighbors.size()>0,try to select a nanonode");
-				srand(time(NULL));
-				int i = rand() % neighbors.size();
-				nextId = neighbors[i].first;
+			std::vector<std::pair<uint32_t, uint32_t>>::iterator it =
+					neighbors.begin();
+			for (; it != neighbors.end(); ++it) {
+				uint32_t nextId = (*it).first;
+				bool NalreadySent = CheckAmongSentPacket(id, nextId);
+				if (!NalreadySent) {
+					NS_LOG_FUNCTION(this<<"Consider these nodes");
+					newNeighbors.push_back(*it);
+				}
+			}
+			NS_LOG_FUNCTION(this<<"newNeighbors.size()" << newNeighbors.size());
+			if (newNeighbors.size() > 1) {
+				nextId = from;
+				while (nextId == from) {
+					srand(time(NULL));
+					int i = rand() % newNeighbors.size();
+					nextId = neighbors[i].first;
+				}
+			} else if (newNeighbors.size() == 1
+					&& newNeighbors.at(0).first != from) {
+				NS_LOG_FUNCTION(this << "select the only available neighbors");
+				nextId = newNeighbors.at(0).first;
+			} else if (newNeighbors.size() == 1
+					&& newNeighbors.at(0).first == from) {
+				NS_LOG_FUNCTION(this << "select the only from neighbors");
+				nextId = newNeighbors.at(0).first;
 			}
 			NS_LOG_FUNCTION(this<<"random choose a neighbor"<<"nextId"<<nextId);
 		}
+		UpdateSentPacketId(id, nextId);
+
 		l3Header.SetTtl(ttl - 1);
 		l3Header.SetHopCount(hopcount + 1);
 		l3Header.SetPrevious(thisid);
