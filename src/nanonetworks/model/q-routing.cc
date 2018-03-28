@@ -364,7 +364,7 @@ void QRouting::UpdatePreNode(uint32_t dstId, uint32_t nextId, uint32_t reward,
 //update the routing table
 void QRouting::UpdateRoute(uint32_t dstId, uint32_t nextId, uint32_t Qvalue,
 		uint32_t HopCount) {
-	uint16_t i; //count number
+	uint16_t i = 0; //count number
 	std::vector<QTableEntry>::iterator it = m_qtable.begin();
 
 	for (; it != m_qtable.end(); ++it) {
@@ -406,7 +406,6 @@ void QRouting::SendPacketDst(Ptr<Packet> p, uint32_t dstNodeId) {
 		deflectId = ChooseDeflectNode(dst, routenextId);
 	}
 
-
 	if (routenextId != 991 && routeava) { //如果目的地址不是邻居节点，但是在路由表上
 		//获取邻居节点号  路由表发送
 		nextId = LookupRoute(dst);
@@ -422,7 +421,7 @@ void QRouting::SendPacketDst(Ptr<Packet> p, uint32_t dstNodeId) {
 		if (neighbors.size() != 0) {
 			NS_LOG_FUNCTION(
 					this<<p<<"no route, random choose, neighbors.size () > 0, try to select a nanonode");
-			srand(time(NULL));//这个随机数？？？？
+			srand(time(NULL));		//这个随机数？？？？
 			int i = rand() % neighbors.size();
 			nextId = neighbors[i].first;
 		}
@@ -453,9 +452,10 @@ void QRouting::SendPacketDst(Ptr<Packet> p, uint32_t dstNodeId) {
 	//这里需要将路由表置位
 	SetRouteUn(nextId);
 	mac->Send(p, nextId);
-	SetRouteAv(nextId);
-	//这里需要将路由表置位
 
+	//SetRouteAv(nextId);这里的复位在receive到ACK后进行，或者一段时间后进行。这里的时间还需要进行确定。
+	//Simulator::Schedule(Seconds(0.05),&QRouting::SetRouteAv,this, nextId);
+	//这里需要将路由表置位
 }
 
 void QRouting::ReceivePacket(Ptr<Packet> p) {
@@ -476,58 +476,103 @@ void QRouting::ReceivePacket(Ptr<Packet> p) {
 		NS_LOG_FUNCTION(this<<"is for me");
 		//GetDevice()->GetMessageProcessUnit()->ProcessMessage(p);
 
-		uint32_t from = l3Header.GetSource();
-		uint32_t to = l3Header.GetDestination();
-		uint32_t previous = l3Header.GetPrevious();
-		uint32_t qvalue = l3Header.GetQvalue();
-		uint32_t hopcount = l3Header.GetHopCount();
-		uint32_t qhopcount = l3Header.GetQHopCount();
-
-		uint32_t thisid = GetDevice()->GetNode()->GetId();
-
-		bool PreNodeE = SearchPreNode(from, previous);
-		if (hopcount == 1) {
-			if (!PreNodeE && previous != thisid) {
-				//add the q value table, i.e. the prenode
-				AddPreNodeNew(from, previous, qvalue, hopcount);
-				uint32_t route = LookupRoute(from);
-				if (route == 991 && previous != thisid) {//路由表中已经有记录了，就不行进行增加了
-					AddRoute(from, previous, qvalue, hopcount);
-				}
-				//AddRoute(from, previous, qvalue, hopcount);
-			} else {
-				//也就是存在一跳的邻居节点。也就不用更新了，因为只有一跳。
-			}
-		} else {		//跳数大于一跳
-			if (!PreNodeE && previous != thisid) {
-				AddPreNodeNew(from, previous, qvalue, hopcount);
-				uint32_t route = LookupRoute(from);
-				if (route == 991 && previous != thisid) {//路由表中已经有记录了，就不行进行增加了
-					AddRoute(from, previous, qvalue, hopcount);
-				}
-
-			} else if (PreNodeE && previous != thisid) {
-				//
-				//对routingtable 进行更新
-				uint32_t preReward = qvalue * (qhopcount + 1);
-				UpdatePreNode(from, previous, preReward, qhopcount);
-				uint32_t newQvalue = UpdateQvalue(from, preReward, qhopcount);//更新路由表上的Q值
-				if (newQvalue == 996) {
-				} else {
-					UpdateRoute(from, previous, newQvalue, qhopcount);
-				}
-			}
-		}
-		if (to == GetDevice()->GetNode()->GetId()) {
-			NS_LOG_FUNCTION(this<<"i am the destination");
-			p->AddHeader(l3Header);
-			GetDevice()->GetMessageProcessUnit()->ProcessMessage(p);
+		if (p->GetSize() < 102)	//因为一个正常的包的大小是102bytes，所以小于这个大小的时候就是ACK
+				{
+			//NS_LOG_FUNCTION(this<<'receive the ack'<<p<<'size'<<p->GetSize());
+			SetRouteAv(macfrom);
+			//std::cout<<"receive ack";
 		} else {
-			p->AddHeader(l3Header);
-			NS_LOG_FUNCTION(this<<"forward!");
-			ForwardPacket(p, macfrom);
+			SendACKPacket(macfrom);
+			uint32_t from = l3Header.GetSource();
+			uint32_t to = l3Header.GetDestination();
+			uint32_t previous = l3Header.GetPrevious();
+			uint32_t qvalue = l3Header.GetQvalue();
+			uint32_t hopcount = l3Header.GetHopCount();
+			uint32_t qhopcount = l3Header.GetQHopCount();
+
+			uint32_t thisid = GetDevice()->GetNode()->GetId();
+
+			bool PreNodeE = SearchPreNode(from, previous);
+			if (hopcount == 1) {
+				if (!PreNodeE && previous != thisid) {
+					//add the q value table, i.e. the prenode
+					AddPreNodeNew(from, previous, qvalue, hopcount);
+					uint32_t route = LookupRoute(from);
+					if (route == 991 && previous != thisid) {//路由表中已经有记录了，就不行进行增加了
+						AddRoute(from, previous, qvalue, hopcount);
+					}
+					//AddRoute(from, previous, qvalue, hopcount);
+				} else {
+					//也就是存在一跳的邻居节点。也就不用更新了，因为只有一跳。
+				}
+			} else {		//跳数大于一跳
+				if (!PreNodeE && previous != thisid) {
+					AddPreNodeNew(from, previous, qvalue, hopcount);
+					uint32_t route = LookupRoute(from);
+					if (route == 991 && previous != thisid) {//路由表中已经有记录了，就不行进行增加了
+						AddRoute(from, previous, qvalue, hopcount);
+					}
+
+				} else if (PreNodeE && previous != thisid) {
+					//
+					//对routingtable 进行更新
+					uint32_t preReward = qvalue * (qhopcount + 1);
+					UpdatePreNode(from, previous, preReward, qhopcount);
+					uint32_t newQvalue = UpdateQvalue(from, preReward,
+							qhopcount);				//更新路由表上的Q值
+					if (newQvalue == 996) {
+					} else {
+						UpdateRoute(from, previous, newQvalue, qhopcount);
+					}
+				}
+			}
+			if (to == GetDevice()->GetNode()->GetId()) {
+				NS_LOG_FUNCTION(this<<"i am the destination");
+				p->AddHeader(l3Header);
+				GetDevice()->GetMessageProcessUnit()->ProcessMessage(p);
+			} else {
+				p->AddHeader(l3Header);
+				NS_LOG_FUNCTION(this<<"forward!");
+				ForwardPacket(p, macfrom);
+			}
 		}
 	}
+}
+
+void QRouting::SendACKPacket(uint32_t fromId) {
+	//NS_LOG_FUNCTION(this<<'send the ack to'<< fromId);
+
+	//build an ACK packet
+	int m_ackSize;
+	uint8_t *buffer = new uint8_t[m_ackSize = 10];//头部差不多有48个字节，ip头部32个字节，mac头部8个字节，seq头部8个字节
+	for (int i = 0; i < m_ackSize; i++) {
+		buffer[i] = 19;
+	}
+	Ptr<Packet> ack = Create<Packet>(buffer, m_ackSize);
+	NanoSeqTsHeader seqTs;
+	seqTs.SetSeq(ack->GetUid());//here getuid is to get the globalUid, a gloabl parameter
+
+	//增加network header
+	NanoL3Header header;
+	uint32_t src = GetDevice()->GetNode()->GetId();
+	uint32_t id = seqTs.GetSeq();
+	uint32_t ttl = 0;
+	uint32_t qvalue = 100;
+	uint32_t hopcount = 1;
+
+	header.SetSource(src);
+	header.SetDestination(fromId);
+	header.SetTtl(ttl);
+	header.SetPacketId(id);
+	header.SetQvalue(qvalue);
+	header.SetHopCount(hopcount);
+	header.SetPrevious(src);
+	header.SetQHopCount(0);
+	ack->AddHeader(seqTs);
+	ack->AddHeader(header);
+
+	Ptr<NanoMacEntity> mac = GetDevice()->GetMac();
+	mac->Send(ack, fromId);
 }
 
 void QRouting::ForwardPacket(Ptr<Packet> p) {
@@ -558,7 +603,7 @@ void QRouting::ForwardPacket(Ptr<Packet> p, uint32_t macfrom) {
 		TalreadySent = CheckAmongSentPacket(id, routenextId);
 	}
 	bool routeava = RouteAvailable(to);
-	if (!routeava) {
+	if (routenextId != 991 && !routeava) {
 		deflectedId = ChooseDeflectNode(to, routenextId);
 		if (deflectedId != 995) {
 			PalreadySent = CheckAmongSentPacket(id, deflectedId);

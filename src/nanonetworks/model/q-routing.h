@@ -47,6 +47,8 @@ public:
 
 	void SetRouteUn(uint32_t nextId);
 	void SetRouteAv(uint32_t nextId);
+	//send the ack packet
+	void SendACKPacket(uint32_t fromId);
 
 	typedef struct {
 		uint32_t dstId;

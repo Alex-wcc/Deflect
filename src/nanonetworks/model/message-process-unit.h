@@ -60,6 +60,7 @@ private:
 	int m_packetSize;
 	double m_interarrivalTime;
 	uint32_t m_dstId;
+	uint32_t m_randv;
 
 	typedef void (*OutTxCallback)(int, int, int);
 	typedef void (*OutRxCallback)(int, int, int, int, double, int, int, int);

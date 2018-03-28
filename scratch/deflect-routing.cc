@@ -52,8 +52,8 @@ void PrintSimulationTime(double duration);
 void PrintMemoryUsage(void);
 
 int main(int argc, char *argv[]) {
-	int nbNanoNodes = 30;
-	double txRangeNanoNodes = 0.015;
+	int nbNanoNodes = 50;
+	double txRangeNanoNodes = 0.02;
 	int macType = 2;
 	int l3Type = 3; //deflection routing
 	int seed = 1;
@@ -82,7 +82,7 @@ void Run(int nbNanoNodes, double txRangeNanoNodes, int macType, int l3Type,
 
 	//timers
 	Time::SetResolution(Time::FS);
-	double duration = 5;
+	double duration = 10;
 
 	//layout details
 	double xrange = 0.05;
@@ -179,7 +179,10 @@ void Run(int nbNanoNodes, double txRangeNanoNodes, int macType, int l3Type,
 		//with no mobility
 		Ptr<ConstantPositionMobilityModel> mm = CreateObject<
 				ConstantPositionMobilityModel>();
+		//保证每次的结构都相同，再进行对比。
+		srand(i*10+123);
 		uint16_t x = (rand() % (nbNanoNodes - 1 + 1)) + 1;
+		srand(i*11+64);
 		uint16_t y = (rand() % (nbNanoNodes - 1 + 1)) + 1;
 		mm->SetPosition(
 				Vector(x * (xrange / nbNanoNodes), y * (yrange / nbNanoNodes),
@@ -244,8 +247,8 @@ void Run(int nbNanoNodes, double txRangeNanoNodes, int macType, int l3Type,
 		mpu->SetInterarrivalTime(packetInterval);
 		//生成随机目的地址；
 		//srand(time(NULL));
-	    srand(time(NULL));//这个随机数？？？？
-	    uint32_t dstId = (rand() % (100-1 - 0 + 1)) + 0;
+	    //srand(time(NULL));//这个随机数？？？？
+	    uint32_t dstId = random->GetValue(0, 100);
 		mpu->SetDstId(dstId);
 
 		double startTime = random->GetValue(0.0, 0.1);

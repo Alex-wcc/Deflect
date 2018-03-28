@@ -85,7 +85,8 @@ void MessageProcessUnit::CreteMessage() {
 	seqTs.SetSeq(p->GetUid());
 	p->AddHeader(seqTs);
 
-	//srand(time(NULL));
+	srand(m_randv);
+	m_randv = m_randv+50;
 	m_dstId = (rand() % (29 - 0 + 1)) + 0;
 
 	m_outTX((int) p->GetUid(), (int) GetDevice()->GetNode()->GetId(),
@@ -128,7 +129,7 @@ void MessageProcessUnit::SetInterarrivalTime(double t) {
 }
 void MessageProcessUnit::SetDstId(uint32_t dstId) {
 	NS_LOG_FUNCTION(this);
-	m_dstId = dstId;
+	m_randv = dstId;
 }
 
 } // namespace ns3
