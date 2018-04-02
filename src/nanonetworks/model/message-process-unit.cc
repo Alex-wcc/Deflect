@@ -76,25 +76,32 @@ Ptr<SimpleNanoDevice> MessageProcessUnit::GetDevice(void) {
 
 void MessageProcessUnit::CreteMessage() {
 	NS_LOG_FUNCTION(this);
-	uint8_t *buffer = new uint8_t[m_packetSize = 102];
-	for (int i = 0; i < m_packetSize; i++) {
-		buffer[i] = 129;
+
+	if (m_device->m_energy < 21 && m_device->m_queuePacket.size() >= 1) {
+
+		int energy = GetDevice()->m_energy;
+		energy = energy + 1;
+	} else if (m_device->m_energy >= 21 && m_device->m_queuePacket.size() < m_device->m_bufferSize) {
+		uint8_t *buffer = new uint8_t[m_packetSize = 102];
+		for (int i = 0; i < m_packetSize; i++) {
+			buffer[i] = 129;
+		}
+		Ptr<Packet> p = Create<Packet>(buffer, m_packetSize);
+		NanoSeqTsHeader seqTs;
+		seqTs.SetSeq(p->GetUid());
+		p->AddHeader(seqTs);
+
+		srand(m_randv);
+		m_randv = m_randv + 50;
+		m_dstId = (rand() % (29 - 0 + 1)) + 0;
+
+		m_outTX((int) p->GetUid(), (int) GetDevice()->GetNode()->GetId(),
+				(int) m_dstId);
+
+		m_device->SendPacketDst(p, m_dstId);
+		Simulator::Schedule(Seconds(m_interarrivalTime),
+				&MessageProcessUnit::CreteMessage, this);
 	}
-	Ptr<Packet> p = Create<Packet>(buffer, m_packetSize);
-	NanoSeqTsHeader seqTs;
-	seqTs.SetSeq(p->GetUid());
-	p->AddHeader(seqTs);
-
-	srand(m_randv);
-	m_randv = m_randv+50;
-	m_dstId = (rand() % (29 - 0 + 1)) + 0;
-
-	m_outTX((int) p->GetUid(), (int) GetDevice()->GetNode()->GetId(),
-			(int) m_dstId);
-
-	m_device->SendPacketDst(p, m_dstId);
-	Simulator::Schedule(Seconds(m_interarrivalTime),
-			&MessageProcessUnit::CreteMessage, this);
 }
 
 void MessageProcessUnit::ProcessMessage(Ptr<Packet> p) {

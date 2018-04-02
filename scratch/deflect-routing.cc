@@ -52,7 +52,7 @@ void PrintSimulationTime(double duration);
 void PrintMemoryUsage(void);
 
 int main(int argc, char *argv[]) {
-	int nbNanoNodes = 50;
+	int nbNanoNodes = 30;
 	double txRangeNanoNodes = 0.02;
 	int macType = 2;
 	int l3Type = 3; //deflection routing
@@ -149,28 +149,28 @@ void Run(int nbNanoNodes, double txRangeNanoNodes, int macType, int l3Type,
 	d_nodes = nano.Install(n_nodes, NanoHelper::nanonode);
 
 	//mobility need to revised it
-/*MobilityHelper mobility;
-	mobility.SetMobilityModel("ns3::GaussMarkovMobilityModel", "Bounds",
-			BoxValue(Box(0, xrange, 0, yrange, 0, zrange)), "TimeStep",
-			TimeValue(Seconds(0.001)), "Alpha", DoubleValue(0), "MeanVelocity",
-			StringValue("ns3::UniformRandomVariable[Min=0.00|Max=0.00]"),
-			"MeanDirection",
-			StringValue("ns3::UniformRandomVariable[Min=0|Max=0]"), "MeanPitch",
-			StringValue("ns3::UniformRandomVariable[Min=0.00|Max=0.00]"),
-			"NormalVelocity",
-			StringValue(
-					"ns3::NormalRandomVariable[Mean=0.0|Variance=0.0|Bound=0.0]"),
-			"NormalDirection",
-			StringValue(
-					"ns3::NormalRandomVariable[Mean=0.0|Variance=0.0|Bound=0.0]"),
-			"NormalPitch",
-			StringValue(
-					"ns3::NormalRandomVariable[Mean=0.0|Variance=0.0|Bound=0.0]"));
-	mobility.SetPositionAllocator("ns3::RandomBoxPositionAllocator", "X",
-			StringValue("ns3::UniformRandomVariable[Min=0.0|Max=0.15]"),//RandomVariableValue (UniformVariable (0, xrange)),
-			"Y", StringValue("ns3::UniformRandomVariable[Min=0.0|Max=0.01]"),//RandomVariableValue (UniformVariable (0, yrange)),
-			"Z", StringValue("ns3::UniformRandomVariable[Min=0.0|Max=0.001]"));	//RandomVariableValue (UniformVariable (0, zrange)));
-	mobility.Install(n_nodes);*/
+	/*MobilityHelper mobility;
+	 mobility.SetMobilityModel("ns3::GaussMarkovMobilityModel", "Bounds",
+	 BoxValue(Box(0, xrange, 0, yrange, 0, zrange)), "TimeStep",
+	 TimeValue(Seconds(0.001)), "Alpha", DoubleValue(0), "MeanVelocity",
+	 StringValue("ns3::UniformRandomVariable[Min=0.00|Max=0.00]"),
+	 "MeanDirection",
+	 StringValue("ns3::UniformRandomVariable[Min=0|Max=0]"), "MeanPitch",
+	 StringValue("ns3::UniformRandomVariable[Min=0.00|Max=0.00]"),
+	 "NormalVelocity",
+	 StringValue(
+	 "ns3::NormalRandomVariable[Mean=0.0|Variance=0.0|Bound=0.0]"),
+	 "NormalDirection",
+	 StringValue(
+	 "ns3::NormalRandomVariable[Mean=0.0|Variance=0.0|Bound=0.0]"),
+	 "NormalPitch",
+	 StringValue(
+	 "ns3::NormalRandomVariable[Mean=0.0|Variance=0.0|Bound=0.0]"));
+	 mobility.SetPositionAllocator("ns3::RandomBoxPositionAllocator", "X",
+	 StringValue("ns3::UniformRandomVariable[Min=0.0|Max=0.15]"),//RandomVariableValue (UniformVariable (0, xrange)),
+	 "Y", StringValue("ns3::UniformRandomVariable[Min=0.0|Max=0.01]"),//RandomVariableValue (UniformVariable (0, yrange)),
+	 "Z", StringValue("ns3::UniformRandomVariable[Min=0.0|Max=0.001]"));	//RandomVariableValue (UniformVariable (0, zrange)));
+	 mobility.Install(n_nodes);*/
 
 	//protocol stack
 	for (uint16_t i = 0; i < d_nodes.GetN(); i++) {
@@ -180,14 +180,13 @@ void Run(int nbNanoNodes, double txRangeNanoNodes, int macType, int l3Type,
 		Ptr<ConstantPositionMobilityModel> mm = CreateObject<
 				ConstantPositionMobilityModel>();
 		//保证每次的结构都相同，再进行对比。
-		srand(i*10+123);
+		srand(i * 10 + 123);
 		uint16_t x = (rand() % (nbNanoNodes - 1 + 1)) + 1;
-		srand(i*11+64);
+		srand(i * 11 + 64);
 		uint16_t y = (rand() % (nbNanoNodes - 1 + 1)) + 1;
 		mm->SetPosition(
 				Vector(x * (xrange / nbNanoNodes), y * (yrange / nbNanoNodes),
 						0.0));
-
 		nano.AddMobility(d_nodes.Get(i)->GetObject<NanoNodeDevice>()->GetPhy(),
 				mm);
 
@@ -228,15 +227,37 @@ void Run(int nbNanoNodes, double txRangeNanoNodes, int macType, int l3Type,
 				FemtoSeconds(pulseDuration));
 		dev->GetPhy()->GetObject<TsOokBasedNanoSpectrumPhy>()->SetPulseInterval(
 				FemtoSeconds(pulseInterval));
-
 		dev->GetPhy()->TraceConnectWithoutContext("outPHYTX",
 				MakeBoundCallback(&PrintPHYTXEvents, streamPHYTX));
 		dev->GetPhy()->TraceConnectWithoutContext("outPHYCOLL",
 				MakeBoundCallback(&PrintPHYCOLLEvents, streamPHYCOLL));
+
+//物理层之后是节点本身
+		int energy = 1000000;
+		int maxenergy = 1000000;
+		double harEnergyInterval = 0.1;
+		int harEnergySpeed = 50000;	// 330 /s
+		//int reduceEnergy = 0;	//for random harvesting
+		int energySendPacket = 20;
+		int energyRecPacket = 10;
+		int energySendACK = 2;
+		int energyRecACK = 1;
+		uint32_t buffersize = 10;
+
+		dev->SetEnergyCapacity(energy);
+		dev->SetMaxEnergy(maxenergy);
+		dev->SetHarvestEnergyInterTime(harEnergyInterval);
+		dev->SetHarEnergySpeed(harEnergySpeed);
+		dev->SetEnergySendPacket(energySendPacket);
+		dev->SetEnergyRecPacket(energyRecPacket);
+		dev->SetEnergySendACK(energySendACK);
+		dev->SetEnergyRecACK(energyRecACK);
+		dev->SetBufferSize(buffersize);
+
 	}
 
 	//application
-	double packetInterval = 0.1;
+	double packetInterval = 10;
 
 	for (int i = 0; i < nbNanoNodes; i++) {
 
@@ -245,21 +266,31 @@ void Run(int nbNanoNodes, double txRangeNanoNodes, int macType, int l3Type,
 		d_nodes.Get(i)->GetObject<SimpleNanoDevice>()->SetMessageProcessUnit(
 				mpu);
 		mpu->SetInterarrivalTime(packetInterval);
+
+
+		//d_nodes.Get(i)->GetObject<SimpleNanoDevice>()->SetEnergyCapacity()
 		//生成随机目的地址；
 		//srand(time(NULL));
-	    //srand(time(NULL));//这个随机数？？？？
-	    uint32_t dstId = random->GetValue(0, 100);
+		//srand(time(NULL));//这个随机数？？？？
+		uint32_t dstId = random->GetValue(0, 100);
 		mpu->SetDstId(dstId);
 
-		double startTime = random->GetValue(0.0, 0.1);
+		double startTime = random->GetValue(0.0, 10);
+		//double startTime1 = random->GetValue(0.0,0.1);可以执行，从一个随机时间开始收集能量
+
 		Simulator::Schedule(Seconds(startTime),
 				&MessageProcessUnit::CreteMessage, mpu);
+
+// let the node start harvest energy
+		Ptr<SimpleNanoDevice> dev = d_nodes.Get(i)->GetObject<SimpleNanoDevice>();
+		double harstartTime = random->GetValue(0.0,0.1);
+		Simulator::Schedule(Seconds(harstartTime),
+								&SimpleNanoDevice::HarvestEnergy, dev);
 		mpu->TraceConnectWithoutContext("outTX",
 				MakeBoundCallback(&PrintTXEvents, streamTX));
 		mpu->TraceConnectWithoutContext("outRX",
 				MakeBoundCallback(&PrintRXEvents, streamRX));
 	}
-
 
 	Simulator::Stop(Seconds(duration));
 	Simulator::Schedule(Seconds(0.), &PrintSimulationTime, duration);

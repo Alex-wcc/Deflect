@@ -13,6 +13,8 @@
 #include <iostream>
 #include <utility>
 #include <string>
+//#include "ns3/callback.h"
+//#include "ns3/traced-callback.h"
 
 namespace ns3 {
 
@@ -83,7 +85,8 @@ public:
 public:
 	virtual void SendPacketDst(Ptr<Packet> p, uint32_t dstNodeId);
 	void SendFeedbackPacket(Ptr<Packet> p, uint32_t fromNodeId);
-	virtual void ForwardPacket(Ptr<Packet> p, uint32_t fromNodeId);
+	void ForwardPacket1(Ptr<Packet> p, uint32_t fromNodeId);
+	void SendPacketBuf();
 	//checke the sent/received that whethe the packet has been sent/received before.
 public:
 	void UpdateReceivedPacketId(uint32_t id);
@@ -100,6 +103,13 @@ private:
 	int m_receivedPacketListDim;
 	std::list<std::pair<uint32_t, uint32_t>> m_sentPacketList;
 	int m_sentPacketListDim;
+	int m_sendBuffer;//in this case the buffer = 1,
+
+
+	//输出文件
+	//typedef void (*OutTxCallback)(int, int, int);
+
+	//TracedCallback<int, int, int> m_SendTx;
 
 };
 }
