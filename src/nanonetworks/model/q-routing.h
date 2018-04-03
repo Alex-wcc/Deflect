@@ -31,21 +31,25 @@ public:
 	virtual void DoDispose();
 
 public:
-	void AddRoute(uint32_t dstId, uint32_t nextId, uint32_t Qvalue, uint32_t HopCount);
+	void AddRoute(uint32_t dstId, uint32_t nextId, uint32_t Qvalue,
+			uint32_t HopCount);
 	uint32_t LookupRoute(uint32_t dstId);
 	uint32_t SearchRouteForQvalue(uint32_t dstId);
 	uint32_t SearchRouteForQHopCount(uint32_t dstId);
 	bool RouteAvailable(uint32_t dstId);
 	uint32_t LookUpPreNode(uint32_t dstId);
-	bool SearchPreNode(uint32_t dstId, uint32_t nextId);//寻找对应的记录是否存在，以便于进行添加或者更新
+	bool SearchPreNode(uint32_t dstId, uint32_t nextId); //寻找对应的记录是否存在，以便于进行添加或者更新
 	uint32_t ChooseDeflectNode(uint32_t dstId, uint32_t routeNextId);
 
 	uint32_t UpdateQvalue(uint32_t dstId, double reward, uint32_t HopCount);
-	void UpdateRoute(uint32_t dstId, uint32_t nextId, uint32_t Qvalue, uint32_t HopCount);
+	void UpdateRoute(uint32_t dstId, uint32_t nextId, uint32_t Qvalue,
+			uint32_t HopCount);
 	//void AddPreNode();
 	//uint32_t LookupPreNode();the algorithm did not need to lookup some node, these will be finished at upper layer.
-	void AddPreNodeNew(uint32_t distId, uint32_t nextID, uint32_t Qvalue, uint32_t HopCount);
-	void UpdatePreNode(uint32_t dstId, uint32_t nextId, uint32_t reward, uint32_t HopCount);
+	void AddPreNodeNew(uint32_t distId, uint32_t nextID, uint32_t Qvalue,
+			uint32_t HopCount);
+	void UpdatePreNode(uint32_t dstId, uint32_t nextId, uint32_t reward,
+			uint32_t HopCount);
 
 	void SetRouteUn(uint32_t nextId);
 	void SetRouteAv(uint32_t nextId);
@@ -59,11 +63,10 @@ public:
 		double RecRate;
 		uint32_t HopCount;
 		double UpTime; //
-		bool RouteValid;//when a node is using this route, it will become false.
+		bool RouteValid; //when a node is using this route, it will become false.
 	} QTableEntry;
 
-
-	typedef struct{
+	typedef struct {
 		uint32_t dstId;
 		uint32_t nodeId;
 		uint32_t nodeType;
@@ -71,6 +74,7 @@ public:
 		double RecRate;
 		uint32_t HopCount;
 		double UpTime;
+		bool PreNodeValid;
 	} PreNodeEntry;
 
 	std::vector<QTableEntry> m_qtable;
@@ -94,8 +98,12 @@ public:
 	void SetReceivedPacketListDim(int m);
 
 	void UpdateSentPacketId(uint32_t id, uint32_t nextHop);
-	bool CheckAmongSentPacket(uint32_t id,uint32_t nextHop);
+	bool CheckAmongSentPacket(uint32_t id, uint32_t nextHop);
 	void SetSentPacketListDim(int m);
+
+	void UpdateToSendBuffer(Ptr<Packet> p);
+	void UpdateMacFrom(uint32_t id, uint32_t macfrom);
+	uint32_t SearchMacFrom(uint32_t id);
 
 private:
 
@@ -103,10 +111,14 @@ private:
 	int m_receivedPacketListDim;
 	std::list<std::pair<uint32_t, uint32_t>> m_sentPacketList;
 	int m_sentPacketListDim;
-	int m_sendBuffer;//in this case the buffer = 1,
+	int m_sendBuffer; //in this case the buffer = 1,no use
 
+	std::list<std::pair<Ptr<Packet>, int>> m_tosendBuffer;
+	std::list<std::pair<uint32_t, uint32_t>> m_macFrom;
 
-	//输出文件
+	bool m_SendingTag;//正在发送的标记位
+
+	//outstream
 	//typedef void (*OutTxCallback)(int, int, int);
 
 	//TracedCallback<int, int, int> m_SendTx;

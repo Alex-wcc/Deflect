@@ -244,11 +244,10 @@ int SimpleNanoDevice::GetEnergyCapacity() const {
 	return m_energy;
 }
 
-void SimpleNanoDevice::SetMaxEnergy(int maxenergy)
-{
+void SimpleNanoDevice::SetMaxEnergy(int maxenergy) {
 	NS_LOG_FUNCTION(this);
-	m_maxenergy  = maxenergy;
-	}
+	m_maxenergy = maxenergy;
+}
 
 void SimpleNanoDevice::SetHarvestEnergyInterTime(double t) {
 	NS_LOG_FUNCTION(this);
@@ -265,66 +264,70 @@ void SimpleNanoDevice::HarvestEnergy() {
 
 	m_energy = m_energy + HarEnergyThisTime;
 
-	if(m_energy>m_maxenergy)
-	{
+	if (m_energy > m_maxenergy) {
 		m_energy = m_maxenergy;
 	}
 
-	Simulator::Schedule(Seconds(m_harenergyintertime),&SimpleNanoDevice::HarvestEnergy,this);
+	Simulator::Schedule(Seconds(m_harenergyintertime),
+			&SimpleNanoDevice::HarvestEnergy, this);
 }
 
-void SimpleNanoDevice::SetEnergySendPacket(int energysendpacket)
-{
+void SimpleNanoDevice::SetEnergySendPacket(int energysendpacket) {
 	NS_LOG_FUNCTION(this);
 	m_energysendpacket = energysendpacket;
-	}
+}
 
-void SimpleNanoDevice::SetEnergyRecPacket(int energyrecpacket)
-{
+void SimpleNanoDevice::SetEnergyRecPacket(int energyrecpacket) {
 	NS_LOG_FUNCTION(this);
 	m_energyrecpacket = energyrecpacket;
-	}
+}
 
-void SimpleNanoDevice::SetEnergySendACK(int energysendack)
-{
+void SimpleNanoDevice::SetEnergySendACK(int energysendack) {
 	NS_LOG_FUNCTION(this);
 	m_energysendack = energysendack;
-	}
+}
 
-void SimpleNanoDevice::SetEnergyRecACK(int energyrecack)
-{
+void SimpleNanoDevice::SetEnergyRecACK(int energyrecack) {
 	NS_LOG_FUNCTION(this);
 	m_energyrecack = energyrecack;
-	}
+}
 
 void SimpleNanoDevice::ConsumeEnergySendPacket() {
 	NS_LOG_FUNCTION(this);
-	m_energy = m_energy-m_energysendpacket;
+	m_energy = m_energy - m_energysendpacket;
+	if (m_energy < 0) {
+		m_energy = 0;
+	}
 }
 
-void SimpleNanoDevice::ConsumeEnergyRecPacket()
-{
+void SimpleNanoDevice::ConsumeEnergyRecPacket() {
 	NS_LOG_FUNCTION(this);
-	m_energy = m_energy-m_energyrecpacket;
+	m_energy = m_energy - m_energyrecpacket;
+	if (m_energy < 0) {
+		m_energy = 0;
 	}
+}
 
-void SimpleNanoDevice::ConsumeEnergySendACK()
-{
+void SimpleNanoDevice::ConsumeEnergySendACK() {
 	NS_LOG_FUNCTION(this);
 	m_energy = m_energy - m_energysendack;
+	if (m_energy < 0) {
+		m_energy = 0;
 	}
+}
 
-void SimpleNanoDevice::ConsumeEnergyRecACK()
-{
+void SimpleNanoDevice::ConsumeEnergyRecACK() {
 	NS_LOG_FUNCTION(this);
-	m_energy = m_energy-m_energyrecack;
+	m_energy = m_energy - m_energyrecack;
+	if (m_energy < 0) {
+		m_energy = 0;
 	}
+}
 
-void SimpleNanoDevice::SetBufferSize(uint32_t buffersize)
-{
+void SimpleNanoDevice::SetBufferSize(uint32_t buffersize) {
 	NS_LOG_FUNCTION(this);
 	m_bufferSize = buffersize;
-	}
+}
 
 void SimpleNanoDevice::SetMessageProcessUnit(Ptr<MessageProcessUnit> mpu) {
 	NS_LOG_FUNCTION(this);

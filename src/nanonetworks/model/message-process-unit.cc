@@ -77,11 +77,13 @@ Ptr<SimpleNanoDevice> MessageProcessUnit::GetDevice(void) {
 void MessageProcessUnit::CreteMessage() {
 	NS_LOG_FUNCTION(this);
 
-	if (m_device->m_energy < 21 && m_device->m_queuePacket.size() >= 1) {
+	if (m_device->m_energy < 21
+			|| m_device->m_queuePacket.size() >= GetDevice()->m_bufferSize) {
 
 		int energy = GetDevice()->m_energy;
 		energy = energy + 1;
-	} else if (m_device->m_energy >= 21 && m_device->m_queuePacket.size() < m_device->m_bufferSize) {
+	} else if (m_device->m_energy >= 21
+			&& m_device->m_queuePacket.size() < m_device->m_bufferSize) {
 		uint8_t *buffer = new uint8_t[m_packetSize = 102];
 		for (int i = 0; i < m_packetSize; i++) {
 			buffer[i] = 129;
@@ -93,7 +95,10 @@ void MessageProcessUnit::CreteMessage() {
 
 		srand(m_randv);
 		m_randv = m_randv + 50;
-		m_dstId = (rand() % (29 - 0 + 1)) + 0;
+		m_dstId = m_device->GetNode()->GetId();
+		while (m_dstId == m_device->GetNode()->GetId()) {
+			m_dstId = (rand() % (29 - 0 + 1)) + 0;
+		}
 
 		m_outTX((int) p->GetUid(), (int) GetDevice()->GetNode()->GetId(),
 				(int) m_dstId);

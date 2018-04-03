@@ -233,16 +233,16 @@ void Run(int nbNanoNodes, double txRangeNanoNodes, int macType, int l3Type,
 				MakeBoundCallback(&PrintPHYCOLLEvents, streamPHYCOLL));
 
 //物理层之后是节点本身
-		int energy = 1000000;
-		int maxenergy = 1000000;
+		int energy = 330;
+		int maxenergy = 330;
 		double harEnergyInterval = 0.1;
-		int harEnergySpeed = 50000;	// 330 /s
+		int harEnergySpeed = 200;	// 330 /s
 		//int reduceEnergy = 0;	//for random harvesting
 		int energySendPacket = 20;
 		int energyRecPacket = 10;
 		int energySendACK = 2;
 		int energyRecACK = 1;
-		uint32_t buffersize = 10;
+		uint32_t buffersize = 1;
 
 		dev->SetEnergyCapacity(energy);
 		dev->SetMaxEnergy(maxenergy);
@@ -257,7 +257,7 @@ void Run(int nbNanoNodes, double txRangeNanoNodes, int macType, int l3Type,
 	}
 
 	//application
-	double packetInterval = 10;
+	double packetInterval = 1;
 
 	for (int i = 0; i < nbNanoNodes; i++) {
 
@@ -275,7 +275,7 @@ void Run(int nbNanoNodes, double txRangeNanoNodes, int macType, int l3Type,
 		uint32_t dstId = random->GetValue(0, 100);
 		mpu->SetDstId(dstId);
 
-		double startTime = random->GetValue(0.0, 10);
+		double startTime = random->GetValue(0.0, 15);
 		//double startTime1 = random->GetValue(0.0,0.1);可以执行，从一个随机时间开始收集能量
 
 		Simulator::Schedule(Seconds(startTime),
