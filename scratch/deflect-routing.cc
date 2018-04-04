@@ -82,7 +82,7 @@ void Run(int nbNanoNodes, double txRangeNanoNodes, int macType, int l3Type,
 
 	//timers
 	Time::SetResolution(Time::FS);
-	double duration = 10;
+	double duration = 50;
 
 	//layout details
 	double xrange = 0.05;
@@ -233,10 +233,10 @@ void Run(int nbNanoNodes, double txRangeNanoNodes, int macType, int l3Type,
 				MakeBoundCallback(&PrintPHYCOLLEvents, streamPHYCOLL));
 
 //物理层之后是节点本身
-		int energy = 330;
-		int maxenergy = 330;
+		int energy = 200000;
+		int maxenergy = 200000;
 		double harEnergyInterval = 0.1;
-		int harEnergySpeed = 200;	// 330 /s
+		int harEnergySpeed = 10000;	// 330 /s
 		//int reduceEnergy = 0;	//for random harvesting
 		int energySendPacket = 20;
 		int energyRecPacket = 10;
@@ -257,7 +257,7 @@ void Run(int nbNanoNodes, double txRangeNanoNodes, int macType, int l3Type,
 	}
 
 	//application
-	double packetInterval = 1;
+	double packetInterval = 3;
 
 	for (int i = 0; i < nbNanoNodes; i++) {
 

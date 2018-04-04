@@ -155,7 +155,7 @@ void QRouting::SetRouteUn(uint32_t nextId) {
 		}
 		j++;
 	}
-
+	Simulator::Schedule(Seconds(0.1), &QRouting::SetRouteAv, this, nextId);
 }
 void QRouting::SetRouteAv(uint32_t nextId) {
 	std::vector<QTableEntry>::iterator it = m_qtable.begin();
@@ -431,7 +431,7 @@ void QRouting::SendPacketDst(Ptr<Packet> p, uint32_t dstNodeId) {
 		NS_LOG_FUNCTION(this<<p<<"size"<<p->GetSize()<<seqTs);
 
 		uint32_t dst = dstNodeId; //目的地址
-		uint32_t nextId = GetDevice()->GetNode()->GetId(); //如果找不到就给自己。
+		uint32_t nextId = 999; //GetDevice()->GetNode()->GetId(); //如果找不到就给自己。
 
 		uint32_t routenextId = LookupRoute(dst);
 		bool routeava = RouteAvailable(dst);
@@ -518,12 +518,10 @@ void QRouting::ReceivePacket(Ptr<Packet> p) {
 				energy = energy + 1;
 			} else {
 				//consume energy
-				m_tosendBuffer.pop_front();
+				m_tosendBuffer.remove(m_tosendBuffer.front());
 				GetDevice()->ConsumeEnergyRecACK();
 				//NS_LOG_FUNCTION(this<<'receive the ack'<<p<<'size'<<p->GetSize());
 				SetRouteAv(macfrom);
-
-				//std::cout<<"receive ack";
 			}
 		} else {
 			if (GetDevice()->m_energy < 32
@@ -533,7 +531,8 @@ void QRouting::ReceivePacket(Ptr<Packet> p) {
 				energy = energy + 1;
 				int queue = m_tosendBuffer.size();
 				queue = queue + 1;
-			} else if (GetDevice()->m_energy >= 32
+			}
+			if (GetDevice()->m_energy >= 32
 					&& m_tosendBuffer.size() < GetDevice()->m_bufferSize) {
 				GetDevice()->ConsumeEnergyRecPacket();
 				SendACKPacket(macfrom);
@@ -638,184 +637,196 @@ void QRouting::SendACKPacket(uint32_t fromId) {
 void QRouting::SendPacketBuf() {
 	NS_LOG_FUNCTION(this);
 
+	while (m_tosendBuffer.front().second < 1) {
+		m_tosendBuffer.remove(m_tosendBuffer.front());
+	}
+
 	if (m_tosendBuffer.size() >= 1) {
 		m_SendingTag = true;
-		if (m_tosendBuffer.front().second < 1) {
-			m_tosendBuffer.remove(m_tosendBuffer.front());
-		} else {
-			uint32_t thisId = GetDevice()->GetNode()->GetId();
-			thisId = thisId + 1;
-			uint32_t nextId = GetDevice()->GetNode()->GetId();	//如果找不到就给自己。
-			Ptr<Packet> p = (m_tosendBuffer.front().first)->Copy();
+		uint32_t thisId = GetDevice()->GetNode()->GetId();
+		thisId = thisId + 1;
+		uint32_t nextId = 999; /*= GetDevice()->GetNode()->GetId()*/
+		;	//如果找不到就给自己。
+		Ptr<Packet> p = (m_tosendBuffer.front().first)->Copy();
 
-			int RepeatCount = m_tosendBuffer.front().second;
-			m_tosendBuffer.front().second = RepeatCount - 1;
+		int RepeatCount = m_tosendBuffer.front().second;
 
-			if (RepeatCount < 4) {
-				int j = 0;
-				j = j + 1;
-			}
-			//查询相应的macfrom的地址。
+		if (RepeatCount < 4) {
+			int j = 0;
+			j = j + 1;
+		}
 
-			NanoL3Header l3Header;
-			p->RemoveHeader(l3Header);
-			uint32_t id = l3Header.GetPacketId();
+		m_tosendBuffer.front().second = RepeatCount - 1;
+		//查询相应的macfrom的地址。
 
-			uint32_t from = l3Header.GetSource();
-			uint32_t to = l3Header.GetDestination();
-			uint32_t hopcount = l3Header.GetHopCount();
-			uint32_t headerQvalue = l3Header.GetQvalue();
-			uint32_t qhopcount = l3Header.GetQHopCount();
+		NanoL3Header l3Header;
+		p->RemoveHeader(l3Header);
+		uint32_t id = l3Header.GetPacketId();
 
-			if (hopcount == 1) {
-				if (GetDevice()->m_energy < 21) {
-					//send
-					int energy = GetDevice()->m_energy;
-					energy = energy + 1;
-					int queue = m_tosendBuffer.size();
-					queue = queue + 1;
-				} else if (GetDevice()->m_energy >= 21) {
-					//for send the packet in the buffer
-					uint32_t routenextId = LookupRoute(to);
-					bool routeava = RouteAvailable(to);
-					uint32_t deflectId;
-					if (routenextId != 991) {
-						deflectId = ChooseDeflectNode(to, routenextId);
+		uint32_t from = l3Header.GetSource();
+		uint32_t to = l3Header.GetDestination();
+		uint32_t hopcount = l3Header.GetHopCount();
+		uint32_t headerQvalue = l3Header.GetQvalue();
+		uint32_t qhopcount = l3Header.GetQHopCount();
+
+		if (hopcount == 1) {
+			if (GetDevice()->m_energy < 21) {
+				//send
+				int energy = GetDevice()->m_energy;
+				energy = energy + 1;
+				int queue = m_tosendBuffer.size();
+				queue = queue + 1;
+			} else if (GetDevice()->m_energy >= 21) {
+				//for send the packet in the buffer
+				uint32_t routenextId = LookupRoute(to);
+				bool routeava = RouteAvailable(to);
+				uint32_t deflectId;
+				if (routenextId != 991) {
+					deflectId = ChooseDeflectNode(to, routenextId);
+				}
+
+				if (routenextId != 991 && routeava) { //如果目的地址不是邻居节点，但是在路由表上
+					//获取邻居节点号  路由表发送
+					nextId = LookupRoute(to);
+					NS_LOG_FUNCTION(
+							this<<"There is a route" << "nextId" << nextId);
+				} else if (routenextId != 991 && !routeava
+						&& deflectId != 995) {
+					nextId = deflectId;
+					NS_LOG_FUNCTION(
+							this<<"The packet is deflected"<<"nextId"<<nextId);
+				} else {		//没有可用的端口,随机发送一个到别的端口
+					//这里不能是路由端口，或者不能是已经在使用的端口，这里需要进行修改。
+					std::vector<std::pair<uint32_t, uint32_t>> neighbors =
+							GetDevice()->GetMac()->m_neighbors;
+					if (neighbors.size() != 0) {
+						NS_LOG_FUNCTION(
+								this<<p<<"no route, random choose, neighbors.size () > 0, try to select a nanonode");
+						srand(time(NULL));		//这个随机数？？？？
+						int i = rand() % neighbors.size();
+						nextId = neighbors[i].first;
 					}
+					NS_LOG_FUNCTION(
+							this<<"random choose a neighbor" << "nextId" << nextId);
+				}
+				p->AddHeader(l3Header);
+				UpdateSentPacketId(id, nextId);
+				Ptr<NanoMacEntity> mac = GetDevice()->GetMac();
+				if (GetDevice()->GetNode()->GetId() == nextId) {
+					int k = 0;
+					k = k + 1;
+				}
+				//这里需要将路由表置位
+				SetRouteUn(nextId);
+				mac->Send(p, nextId);
+				GetDevice()->ConsumeEnergySendPacket();
 
-					if (routenextId != 991 && routeava) { //如果目的地址不是邻居节点，但是在路由表上
-						//获取邻居节点号  路由表发送
-						nextId = LookupRoute(to);
-						NS_LOG_FUNCTION(
-								this<<"There is a route" << "nextId" << nextId);
-					} else if (routenextId != 991 && !routeava
-							&& deflectId != 995) {
-						nextId = deflectId;
-						NS_LOG_FUNCTION(
-								this<<"The packet is deflected"<<"nextId"<<nextId);
-					} else {		//没有可用的端口,随机发送一个到别的端口
-						//这里不能是路由端口，或者不能是已经在使用的端口，这里需要进行修改。
-						std::vector<std::pair<uint32_t, uint32_t>> neighbors =
-								GetDevice()->GetMac()->m_neighbors;
-						if (neighbors.size() != 0) {
-							NS_LOG_FUNCTION(
-									this<<p<<"no route, random choose, neighbors.size () > 0, try to select a nanonode");
-							srand(time(NULL));		//这个随机数？？？？
-							int i = rand() % neighbors.size();
+			}
+		} else {
+//for forward packet
+			if (GetDevice()->m_energy < 21) {
+				int energy = GetDevice()->m_energy;
+				energy = energy + 1;
+				int queue = m_tosendBuffer.size();
+				queue = queue + 1;
+				//下面这行应该注释
+				//Simulator::Schedule(Seconds(0.1), &QRouting::ForwardPacket1, this,
+				//		p1, macfrom1);
+			}
+			if (GetDevice()->m_energy >= 21) {
+				uint32_t macfrom = SearchMacFrom(id);
+				if (macfrom != 9999) {
+					int i = 1;
+					i = i + 1;
+				}
+				uint32_t routenextId = LookupRoute(to);
+				uint32_t deflectedId = 995;
+				bool PalreadySent;
+				bool TalreadySent;
+				if (routenextId != 991) {
+					TalreadySent = CheckAmongSentPacket(id, routenextId);
+				}
+				bool routeava = RouteAvailable(to);
+				if (routenextId != 991 && !routeava) {
+					deflectedId = ChooseDeflectNode(to, routenextId);
+					if (deflectedId != 995) {
+						PalreadySent = CheckAmongSentPacket(id, deflectedId);
+					}
+				}
+
+				if (routenextId != 991 && routeava && !TalreadySent) {
+					nextId = routenextId;
+					NS_LOG_FUNCTION(
+							this<<"Forward there is route"<<"nextId"<<nextId);
+					// 获得 from ，previous 对应的qvalue 和hopcount；
+					headerQvalue = SearchRouteForQvalue(from);
+					qhopcount = SearchRouteForQHopCount(from);
+				} else if (routenextId != 991 && !routeava && deflectedId != 995
+						&& !PalreadySent) {
+					nextId = deflectedId;
+					NS_LOG_FUNCTION(
+							this<<"Forward the packet is deflected"<<"nextId"<<nextId);
+					// 获得 from ，previous 对应的qvalue 和hopcount；
+					headerQvalue = SearchRouteForQvalue(from);
+					qhopcount = SearchRouteForQHopCount(from);
+				} else {
+					std::vector<std::pair<uint32_t, uint32_t>> newNeighbors;
+					std::vector<std::pair<uint32_t, uint32_t>> neighbors =
+							GetDevice()->GetMac()->m_neighbors;
+					std::vector<std::pair<uint32_t, uint32_t>>::iterator it =
+							neighbors.begin();
+					for (; it != neighbors.end(); ++it) {
+						uint32_t nextId = (*it).first;
+						bool NalreadySent = CheckAmongSentPacket(id, nextId);
+						if (!NalreadySent) {
+							NS_LOG_FUNCTION(this<<"Consider these nodes");
+							newNeighbors.push_back(*it);
+						}
+					}
+					NS_LOG_FUNCTION(
+							this<<"newNeighbors.size()" << newNeighbors.size());
+					if (newNeighbors.size() > 1) {
+						nextId = macfrom;
+						while (nextId == macfrom) {
+							srand(time(NULL));
+							int i = rand() % newNeighbors.size();
 							nextId = neighbors[i].first;
 						}
+					} else if (newNeighbors.size() == 1
+							&& newNeighbors.at(0).first != macfrom) {
 						NS_LOG_FUNCTION(
-								this<<"random choose a neighbor" << "nextId" << nextId);
+								this << "select the only available neighbors");
+						nextId = newNeighbors.at(0).first;
+					} else if (newNeighbors.size() == 1
+							&& newNeighbors.at(0).first == macfrom) {
+						NS_LOG_FUNCTION(
+								this << "select the only available neighbors");
+						nextId = newNeighbors.at(0).first;
 					}
-					p->AddHeader(l3Header);
-					UpdateSentPacketId(id, nextId);
-					Ptr<NanoMacEntity> mac = GetDevice()->GetMac();
-					//这里需要将路由表置位
-					SetRouteUn(nextId);
-					mac->Send(p, nextId);
-					GetDevice()->ConsumeEnergySendPacket();
+					NS_LOG_FUNCTION(
+							this<<"random choose a neighbor"<<"nextId"<<nextId);
 				}
-			} else {
-//for forward packet
-				if (GetDevice()->m_energy < 21) {
-					int energy = GetDevice()->m_energy;
-					energy = energy + 1;
-					int queue = m_tosendBuffer.size();
-					queue = queue + 1;
-					//下面这行应该注释
-					//Simulator::Schedule(Seconds(0.1), &QRouting::ForwardPacket1, this,
-					//		p1, macfrom1);
-				} else if (GetDevice()->m_energy >= 21) {
-					uint32_t macfrom = SearchMacFrom(id);
-					if (macfrom != 9999) {
-						int i = 1;
-						i = i + 1;
-					}
-					uint32_t routenextId = LookupRoute(to);
-					uint32_t deflectedId = 995;
-					bool PalreadySent;
-					bool TalreadySent;
-					if (routenextId != 991) {
-						TalreadySent = CheckAmongSentPacket(id, routenextId);
-					}
-					bool routeava = RouteAvailable(to);
-					if (routenextId != 991 && !routeava) {
-						deflectedId = ChooseDeflectNode(to, routenextId);
-						if (deflectedId != 995) {
-							PalreadySent = CheckAmongSentPacket(id,
-									deflectedId);
-						}
-					}
+				l3Header.SetPrevious(GetDevice()->GetNode()->GetId());
+				l3Header.SetQvalue(headerQvalue);
+				l3Header.SetQHopCount(qhopcount);
+				NS_LOG_FUNCTION(this<<"forward new l3 header"<<l3Header);
+				p->AddHeader(l3Header);
 
-					if (routenextId != 991 && routeava && !TalreadySent) {
-						nextId = routenextId;
-						NS_LOG_FUNCTION(
-								this<<"Forward there is route"<<"nextId"<<nextId);
-						// 获得 from ，previous 对应的qvalue 和hopcount；
-						headerQvalue = SearchRouteForQvalue(from);
-						qhopcount = SearchRouteForQHopCount(from);
-					} else if (routenextId != 991 && !routeava
-							&& deflectedId != 995 && !PalreadySent) {
-						nextId = deflectedId;
-						NS_LOG_FUNCTION(
-								this<<"Forward the packet is deflected"<<"nextId"<<nextId);
-						// 获得 from ，previous 对应的qvalue 和hopcount；
-						headerQvalue = SearchRouteForQvalue(from);
-						qhopcount = SearchRouteForQHopCount(from);
-					} else {
-						std::vector<std::pair<uint32_t, uint32_t>> newNeighbors;
-						std::vector<std::pair<uint32_t, uint32_t>> neighbors =
-								GetDevice()->GetMac()->m_neighbors;
-						std::vector<std::pair<uint32_t, uint32_t>>::iterator it =
-								neighbors.begin();
-						for (; it != neighbors.end(); ++it) {
-							uint32_t nextId = (*it).first;
-							bool NalreadySent = CheckAmongSentPacket(id,
-									nextId);
-							if (!NalreadySent) {
-								NS_LOG_FUNCTION(this<<"Consider these nodes");
-								newNeighbors.push_back(*it);
-							}
-						}
-						NS_LOG_FUNCTION(
-								this<<"newNeighbors.size()" << newNeighbors.size());
-						if (newNeighbors.size() > 1) {
-							nextId = macfrom;
-							while (nextId == macfrom) {
-								srand(time(NULL));
-								int i = rand() % newNeighbors.size();
-								nextId = neighbors[i].first;
-							}
-						} else if (newNeighbors.size() == 1
-								&& newNeighbors.at(0).first != macfrom) {
-							NS_LOG_FUNCTION(
-									this << "select the only available neighbors");
-							nextId = newNeighbors.at(0).first;
-						} else if (newNeighbors.size() == 1
-								&& newNeighbors.at(0).first == macfrom) {
-							NS_LOG_FUNCTION(
-									this << "select the only available neighbors");
-							nextId = newNeighbors.at(0).first;
-						}
-						NS_LOG_FUNCTION(
-								this<<"random choose a neighbor"<<"nextId"<<nextId);
-					}
-					l3Header.SetPrevious(GetDevice()->GetNode()->GetId());
-					l3Header.SetQvalue(headerQvalue);
-					l3Header.SetQHopCount(qhopcount);
-					NS_LOG_FUNCTION(this<<"forward new l3 header"<<l3Header);
-					p->AddHeader(l3Header);
-
-					UpdateSentPacketId(id, nextId);
-					Ptr<NanoMacEntity> mac = GetDevice()->GetMac();
-					//这里将路由表置位
-					SetRouteUn(nextId);
-					mac->Send(p, nextId);
-					GetDevice()->ConsumeEnergySendPacket();
+				UpdateSentPacketId(id, nextId);
+				Ptr<NanoMacEntity> mac = GetDevice()->GetMac();
+				if (GetDevice()->GetNode()->GetId() == nextId) {
+					int k = 0;
+					k = k + 1;
 				}
+				//这里将路由表置位
+				SetRouteUn(nextId);
+				mac->Send(p, nextId);
+				GetDevice()->ConsumeEnergySendPacket();
+				m_tosendBuffer.front().second = RepeatCount - 1;
 			}
 		}
-		Simulator::Schedule(Seconds(0.001), &QRouting::SendPacketBuf, this);
+
+		Simulator::Schedule(PicoSeconds(200000), &QRouting::SendPacketBuf, this);
 	} else {
 		m_SendingTag = false;
 	}
@@ -827,7 +838,7 @@ void QRouting::ForwardPacket(Ptr<Packet> p) {
 void QRouting::ForwardPacket1(Ptr<Packet> p, uint32_t macfrom) {
 	NS_LOG_FUNCTION(this);
 
-	uint32_t nextId = GetDevice()->GetNode()->GetId();	//如果找不到就给自己。
+	uint32_t nextId = 99;		// GetDevice()->GetNode()->GetId();	//如果找不到就给自己。
 	Ptr<Packet> p1 = p;
 
 	NanoL3Header l3Header;
@@ -1006,9 +1017,10 @@ void QRouting::SetSentPacketListDim(int m) {
 
 void QRouting::UpdateToSendBuffer(Ptr<Packet> p) {
 	NS_LOG_FUNCTION(this);
+
 	std::pair<Ptr<Packet>, int> item;
 	item.first = p;
-	item.second = 8;
+	item.second = 5;
 	m_tosendBuffer.push_back(item);
 }
 
