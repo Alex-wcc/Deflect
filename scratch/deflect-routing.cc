@@ -82,7 +82,7 @@ void Run(int nbNanoNodes, double txRangeNanoNodes, int macType, int l3Type,
 
 	//timers
 	Time::SetResolution(Time::FS);
-	double duration = 50;
+	double duration = 100;
 
 	//layout details
 	double xrange = 0.05;
@@ -265,6 +265,7 @@ void Run(int nbNanoNodes, double txRangeNanoNodes, int macType, int l3Type,
 		mpu->SetDevice(d_nodes.Get(i)->GetObject<SimpleNanoDevice>());
 		d_nodes.Get(i)->GetObject<SimpleNanoDevice>()->SetMessageProcessUnit(
 				mpu);
+		//在message process里面进行了随机处理。
 		mpu->SetInterarrivalTime(packetInterval);
 
 

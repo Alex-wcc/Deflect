@@ -37,7 +37,7 @@ TypeId NanoL3Header::GetInstanceTypeId(void) const {
 }
 
 uint32_t NanoL3Header::GetSerializedSize(void) const {
-	return 4 + 4 + 4 + 4 + 4 + 4 + 4 + 4;
+	return 4 + 4 + 4 + 4 + 4 + 4 + 4 + 4 + 4 + 4 + 4;
 }
 
 void NanoL3Header::Serialize(Buffer::Iterator start) const {
@@ -49,7 +49,10 @@ void NanoL3Header::Serialize(Buffer::Iterator start) const {
 	start.WriteHtonU32(m_hopcount);
 	start.WriteHtonU32(m_previous);
 	start.WriteHtonU32(m_qhopcount);
-
+	//for three probabilities
+	start.WriteHtonU32(m_deflectrate);
+	start.WriteHtonU32(m_droprate);
+	start.WriteHtonU32(m_energyrate);
 }
 
 uint32_t NanoL3Header::Deserialize(Buffer::Iterator start) {
@@ -63,6 +66,10 @@ uint32_t NanoL3Header::Deserialize(Buffer::Iterator start) {
 	m_hopcount = rbuf.ReadNtohU32();
 	m_previous = rbuf.ReadNtohU32();
 	m_qhopcount = rbuf.ReadNtohU32();
+	//for three probabilities
+	m_deflectrate = rbuf.ReadNtohU32();
+	m_droprate = rbuf.ReadNtohU32();
+	m_energyrate = rbuf.ReadNtohU32();
 
 	return rbuf.GetDistanceFrom(start);
 }
@@ -108,27 +115,56 @@ uint32_t NanoL3Header::GetPacketId() const {
 void NanoL3Header::SetQvalue(uint32_t qvalue) {
 	m_intqvalue = qvalue;
 }
+
 uint32_t NanoL3Header::GetQvalue() const {
 	return m_intqvalue;
 }
 void NanoL3Header::SetHopCount(uint32_t hopcount) {
 	m_hopcount = hopcount;
 }
+
 uint32_t NanoL3Header::GetHopCount() const {
 	return m_hopcount;
 }
+
 void NanoL3Header::SetPrevious(uint32_t previous) {
 	m_previous = previous;
 }
+
 uint32_t NanoL3Header::GetPrevious() const {
 	return m_previous;
 }
+
 void NanoL3Header::SetQHopCount(uint32_t qhopcount) {
 	m_qhopcount = qhopcount;
 }
+
 uint32_t NanoL3Header::GetQHopCount() const {
 	return m_qhopcount;
 }
+//for three probabilities
+void NanoL3Header::SetDeflectRate(uint32_t deflecterate) {
+	m_deflectrate = deflecterate;
+}
 
+uint32_t NanoL3Header::GetDeflectRate() const {
+	return m_deflectrate;
+}
+
+void NanoL3Header::SetDropRate(uint32_t droprate) {
+	m_droprate = droprate;
+}
+
+uint32_t NanoL3Header::GetDropRate() const {
+	return m_droprate;
+}
+
+void NanoL3Header::SetEnergyRate(uint32_t energyrate) {
+	m_energyrate = energyrate;
+}
+
+uint32_t NanoL3Header::GetEnergyRate() const {
+	return m_energyrate;
+}
 } // namespace ns3
 

@@ -97,6 +97,15 @@ public:
 
   void SetQHopCount(uint32_t qhopcount);
   uint32_t GetQHopCount() const;
+  //for probabilities
+  void SetDeflectRate(uint32_t deflectrate);
+  uint32_t GetDeflectRate() const;
+
+  void SetDropRate(uint32_t droprate);
+  uint32_t GetDropRate() const;
+
+  void SetEnergyRate(uint32_t energyrate);
+  uint32_t GetEnergyRate() const;
 
 
 
@@ -109,6 +118,10 @@ private:
   uint32_t m_intqvalue;
   uint32_t m_hopcount;
   uint32_t m_qhopcount;
+  //for the three probabilities
+  uint32_t m_deflectrate;
+  uint32_t m_droprate;
+  uint32_t m_energyrate;
 };
 
 } // namespace ns3

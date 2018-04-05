@@ -55,6 +55,11 @@ SimpleNanoDevice::SimpleNanoDevice() {
 	m_phy = 0;
 	m_l3 = 0;
 	m_mpu = 0;
+
+	m_SendCount = 0.0;
+	m_DeflectedCount = 0.0;
+	m_ReceiveCount = 0.0;
+	m_ReceiveACKCount = 0.0;
 }
 
 SimpleNanoDevice::~SimpleNanoDevice() {

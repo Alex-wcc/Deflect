@@ -174,6 +174,12 @@ public:
 	int m_energyrecack;
 	std::list<Ptr<Packet>> m_queuePacket;
 	uint32_t m_bufferSize;
+	//
+	double m_SendCount;
+	double m_DeflectedCount;
+	double m_ReceiveCount;
+	double m_ReceiveACKCount;
+
 };
 
 } // namespace ns3
