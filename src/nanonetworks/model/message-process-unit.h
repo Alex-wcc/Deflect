@@ -53,6 +53,7 @@ public:
 	void SetPacketSize(int s);
 	void SetInterarrivalTime(double t);
 	void SetDstId(uint32_t dstId);
+	void PrintNodestatus();
 
 private:
 
@@ -66,6 +67,9 @@ private:
 	typedef void (*OutRxCallback)(int, int, int, int, double, int, int, int);
 	TracedCallback<int, int, int> m_outTX;
 	TracedCallback<int, int, int, int, double, int, int, int> m_outRX;
+// to print the node status
+	typedef void (*NodeStatusCallback)(int, int, int, double, double, double, double);
+	TracedCallback<int, int, int, double, double, double, double> m_NodeStatus;
 };
 
 } // namespace ns3

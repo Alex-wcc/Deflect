@@ -45,6 +45,8 @@ void Run(int nbNanoNodes, double txRangeNanoNodes, int macType, int l3Type,
 void PrintTXEvents(Ptr<OutputStreamWrapper> stream, int, int, int);
 void PrintRXEvents(Ptr<OutputStreamWrapper> stream, int, int, int, int, double,
 		int, int, int);
+void PrintNodeStatus(Ptr<OutputStreamWrapper> stream, int, int, int, double,
+		double, double, double);
 void PrintPHYTXEvents(Ptr<OutputStreamWrapper> stream, int, int);
 void PrintPHYCOLLEvents(Ptr<OutputStreamWrapper> stream, int, int);
 void PrintSimulationTime(double duration);
@@ -53,7 +55,7 @@ void PrintMemoryUsage(void);
 
 int main(int argc, char *argv[]) {
 	int nbNanoNodes = 30;
-	double txRangeNanoNodes = 0.02;
+	double txRangeNanoNodes = 0.015;
 	int macType = 2;
 	int l3Type = 3; //deflection routing
 	int seed = 1;
@@ -114,6 +116,10 @@ void Run(int nbNanoNodes, double txRangeNanoNodes, int macType, int l3Type,
 	file_outRX_s << "RES_RX" << "_N_" << nbNanoNodes << "_nTxRange_"
 			<< txRangeNanoNodes << "_macType_" << macType << "_l3Type_"
 			<< l3Type << "_seed_" << seed;
+	std::stringstream file_NodeStatus_s;
+	file_NodeStatus_s << "RES_NodeStatus" << "_N_" << nbNanoNodes
+			<< "_nTxRange_" << txRangeNanoNodes << "_macType_" << macType
+			<< "_l3Type_" << l3Type << "_seed_" << seed;
 	std::stringstream file_outCorrectRX_s;
 	std::stringstream file_outPHYTX_s;
 	file_outPHYTX_s << "RES_PHYTX" << "_N_" << nbNanoNodes << "_nTxRange_"
@@ -126,12 +132,15 @@ void Run(int nbNanoNodes, double txRangeNanoNodes, int macType, int l3Type,
 
 	std::string file_outTX = file_outTX_s.str();
 	std::string file_outRX = file_outRX_s.str();
+	std::string file_NodeStatus = file_NodeStatus_s.str();
 	std::string file_outPHYTX = file_outPHYTX_s.str();
 	std::string file_outPHYCOLL = file_outPHYCOLL_s.str();
 	Ptr<OutputStreamWrapper> streamTX = asciiTraceHelper.CreateFileStream(
 			file_outTX);
 	Ptr<OutputStreamWrapper> streamRX = asciiTraceHelper.CreateFileStream(
 			file_outRX);
+	Ptr<OutputStreamWrapper> streamNodeStatus =
+			asciiTraceHelper.CreateFileStream(file_NodeStatus);
 	Ptr<OutputStreamWrapper> streamPHYTX = asciiTraceHelper.CreateFileStream(
 			file_outPHYTX);
 	Ptr<OutputStreamWrapper> streamPHYCOLL = asciiTraceHelper.CreateFileStream(
@@ -233,10 +242,10 @@ void Run(int nbNanoNodes, double txRangeNanoNodes, int macType, int l3Type,
 				MakeBoundCallback(&PrintPHYCOLLEvents, streamPHYCOLL));
 
 //物理层之后是节点本身
-		int energy = 200000;
-		int maxenergy = 200000;
+		int energy = 300;
+		int maxenergy = 300;
 		double harEnergyInterval = 0.1;
-		int harEnergySpeed = 10000;	// 330 /s
+		int harEnergySpeed = 40;	// 330 /s
 		//int reduceEnergy = 0;	//for random harvesting
 		int energySendPacket = 20;
 		int energyRecPacket = 10;
@@ -268,7 +277,6 @@ void Run(int nbNanoNodes, double txRangeNanoNodes, int macType, int l3Type,
 		//在message process里面进行了随机处理。
 		mpu->SetInterarrivalTime(packetInterval);
 
-
 		//d_nodes.Get(i)->GetObject<SimpleNanoDevice>()->SetEnergyCapacity()
 		//生成随机目的地址；
 		//srand(time(NULL));
@@ -283,14 +291,17 @@ void Run(int nbNanoNodes, double txRangeNanoNodes, int macType, int l3Type,
 				&MessageProcessUnit::CreteMessage, mpu);
 
 // let the node start harvest energy
-		Ptr<SimpleNanoDevice> dev = d_nodes.Get(i)->GetObject<SimpleNanoDevice>();
-		double harstartTime = random->GetValue(0.0,0.1);
+		Ptr<SimpleNanoDevice> dev =
+				d_nodes.Get(i)->GetObject<SimpleNanoDevice>();
+		double harstartTime = random->GetValue(0.0, 0.1);
 		Simulator::Schedule(Seconds(harstartTime),
-								&SimpleNanoDevice::HarvestEnergy, dev);
+				&SimpleNanoDevice::HarvestEnergy, dev);
 		mpu->TraceConnectWithoutContext("outTX",
 				MakeBoundCallback(&PrintTXEvents, streamTX));
 		mpu->TraceConnectWithoutContext("outRX",
 				MakeBoundCallback(&PrintRXEvents, streamRX));
+		mpu->TraceConnectWithoutContext("NodeStatus",
+				MakeBoundCallback(&PrintNodeStatus, streamNodeStatus));
 	}
 
 	Simulator::Stop(Seconds(duration));
@@ -315,6 +326,14 @@ void PrintRXEvents(Ptr<OutputStreamWrapper> stream, int id, int size, int src,
 	*stream->GetStream() << src << " " << thisNode << " " << id << " "
 			<< hopcount << " " << qhopcount << " " << size << " " << delay
 			<< " " << std::endl;
+}
+
+void PrintNodeStatus(Ptr<OutputStreamWrapper> stream, int id, int energy,
+		int maxenergy, double sendcount, double deflectcount,
+		double receivecount, double receiveackcount) {
+	*stream->GetStream() << id << " " << energy << " " << maxenergy << " "
+			<< sendcount << " " << deflectcount << " " << receivecount << " "
+			<< receiveackcount << " " << std::endl;
 }
 
 void PrintPHYCOLLEvents(Ptr<OutputStreamWrapper> stream, int id, int thisNode) {

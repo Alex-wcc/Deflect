@@ -155,7 +155,7 @@ void QRouting::SetRouteUn(uint32_t nextId) {
 		}
 		j++;
 	}
-	//0.1秒后，进行重置，但是这里的0.1秒需要根据能量捕获速率来进行调整。
+	//0.1秒后，进行重置，但是这里的 秒需要根据能量捕获速率来进行调整。
 	Simulator::Schedule(Seconds(0.1), &QRouting::SetRouteAv, this, nextId);
 }
 void QRouting::SetRouteAv(uint32_t nextId) {
@@ -566,7 +566,8 @@ void QRouting::ReceivePacket(Ptr<Packet> p) {
 				double energyrate = l3Header.GetEnergyRate();
 
 				uint32_t thisid = GetDevice()->GetNode()->GetId();
-
+//下面这个函数打印节点的状态，在收到一个数据包后进行打印
+				GetDevice()->GetMessageProcessUnit()->PrintNodestatus();
 				//update the q routing table and prenode table
 				bool PreNodeE = SearchPreNode(from, previous);
 				if (hopcount == 1) {
@@ -591,9 +592,9 @@ void QRouting::ReceivePacket(Ptr<Packet> p) {
 					} else if (PreNodeE && previous != thisid) {
 						//
 						//对routingtable 进行更新
-						double preReward = qvalue * (qhopcount + 1)
-								* (1 + deflectrate) * (1 + droprate)
-								* (1 + energyrate) / 1000000;
+						double preReward = qvalue /** (qhopcount + 1)*/
+						* (1 + deflectrate) * (1 + droprate) * (1 + energyrate)
+								/ 1000000;
 						UpdatePreNode(from, previous, preReward, qhopcount);
 						uint32_t newQvalue = UpdateQvalue(from, preReward,
 								qhopcount);					//更新路由表上的Q值
@@ -673,7 +674,7 @@ void QRouting::SendPacketBuf() {
 
 		int RepeatCount = m_tosendBuffer.front().second;
 
-		if (RepeatCount < 5) {
+		if (RepeatCount < 1) {
 			int j = 0;
 			j = j + 1;
 			//deflect的数据包进行+1操作
@@ -1082,7 +1083,7 @@ void QRouting::UpdateToSendBuffer(Ptr<Packet> p) {
 
 	std::pair<Ptr<Packet>, int> item;
 	item.first = p;
-	item.second = 5;
+	item.second = 1;
 	m_tosendBuffer.push_back(item);
 }
 

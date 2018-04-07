@@ -44,7 +44,10 @@ TypeId MessageProcessUnit::GetTypeId(void) {
 					"ns3::MessageProcessUnit::OutTxCallback").AddTraceSource(
 					"outRX", "outRX",
 					MakeTraceSourceAccessor(&MessageProcessUnit::m_outRX),
-					"ns3::MessageProcessUnit::OutRxCallback");
+					"ns3::MessageProcessUnit::OutRxCallback").AddTraceSource(
+					"NodeStatus", "NodeStatus",
+					MakeTraceSourceAccessor(&MessageProcessUnit::m_NodeStatus),
+					"ns3::MessageProcessUnit::NodeStatusCallback");
 	;
 	return tid;
 }
@@ -101,7 +104,8 @@ void MessageProcessUnit::CreteMessage() {
 		}
 
 		//这里对interarrivaltime 进行随机处理。
-		m_interarrivalTime = (rand() % (6 - 3 + 1)) + 3 + ((rand() % (10 - 0 + 1)) + 0)/10.0;
+		m_interarrivalTime = (rand() % (8 - 1 + 1)) + 1
+				+ ((rand() % (9 - 0 + 1)) + 0) / 10.0;
 
 		m_outTX((int) p->GetUid(), (int) GetDevice()->GetNode()->GetId(),
 				(int) m_dstId);
@@ -111,6 +115,18 @@ void MessageProcessUnit::CreteMessage() {
 				&MessageProcessUnit::CreteMessage, this);
 	}
 }
+
+void MessageProcessUnit::PrintNodestatus()
+{
+	int nodeid = m_device->GetNode()->GetId();
+	int energy = m_device->m_energy;
+	int maxenergy = m_device->m_maxenergy;
+	double sendcount = m_device->m_SendCount;
+	double deflectcount = m_device->m_DeflectedCount;
+	double receivecount = m_device->m_ReceiveCount;
+	double receiveackcount = m_device->m_ReceiveACKCount;
+	m_NodeStatus(nodeid, energy, maxenergy, sendcount, deflectcount, receivecount, receiveackcount);
+	}
 
 void MessageProcessUnit::ProcessMessage(Ptr<Packet> p) {
 	NS_LOG_FUNCTION(this);

@@ -265,6 +265,11 @@ void SimpleNanoDevice::SetHarEnergySpeed(int speed) {
 
 void SimpleNanoDevice::HarvestEnergy() {
 	NS_LOG_FUNCTION(this);
+
+	//随机能量吸收
+		srand(m_randv);
+		m_randv = m_randv+23;
+		m_harenergyspeed = (rand() % (60 - 10 + 1)) + 10;
 	uint32_t HarEnergyThisTime = m_harenergyintertime * (m_harenergyspeed);
 
 	m_energy = m_energy + HarEnergyThisTime;

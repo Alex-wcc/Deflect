@@ -155,6 +155,9 @@ private:
 	Ptr<NanoMacEntity> m_mac;
 	Ptr<NanoRoutingEntity> m_l3;
 	Ptr<MessageProcessUnit> m_mpu;
+	//为了随机能量吸收速率
+	uint32_t m_randv;
+
 
 public:
 	int m_seed;
