@@ -573,10 +573,10 @@ void QRouting::ReceivePacket(Ptr<Packet> p) {
 				if (hopcount == 1) {
 					if (!PreNodeE && previous != thisid) {
 						//add the q value table, i.e. the prenode
-						AddPreNodeNew(from, previous, qvalue, hopcount);
+					//	AddPreNodeNew(from, previous, qvalue, hopcount);
 						uint32_t route = LookupRoute(from);
 						if (route == 991 && previous != thisid) {//路由表中已经有记录了，就不行进行增加了
-							AddRoute(from, previous, qvalue, hopcount);
+						//	AddRoute(from, previous, qvalue, hopcount);
 						}
 						//AddRoute(from, previous, qvalue, hopcount);
 					} else {
@@ -584,10 +584,10 @@ void QRouting::ReceivePacket(Ptr<Packet> p) {
 					}
 				} else {		//跳数大于一跳
 					if (!PreNodeE && previous != thisid) {
-						AddPreNodeNew(from, previous, qvalue, hopcount);
+					//	AddPreNodeNew(from, previous, qvalue, hopcount);
 						uint32_t route = LookupRoute(from);
 						if (route == 991 && previous != thisid) {//路由表中已经有记录了，就不行进行增加了
-							AddRoute(from, previous, qvalue, hopcount);
+					//		AddRoute(from, previous, qvalue, hopcount);
 						}
 					} else if (PreNodeE && previous != thisid) {
 						//
@@ -595,12 +595,12 @@ void QRouting::ReceivePacket(Ptr<Packet> p) {
 						double preReward = qvalue * (qhopcount + 1)
 						* (1 + deflectrate) * (1 + droprate)
 								* (1 +  energyrate) / 1000000;
-						UpdatePreNode(from, previous, preReward, qhopcount);
+						//UpdatePreNode(from, previous, preReward, qhopcount);
 						uint32_t newQvalue = UpdateQvalue(from, preReward,
 								qhopcount);					//更新路由表上的Q值
 						if (newQvalue == 996) {
 						} else {
-							UpdateRoute(from, previous, newQvalue, qhopcount);
+					//		UpdateRoute(from, previous, newQvalue, qhopcount);
 						}
 					}
 				}

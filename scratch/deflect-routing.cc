@@ -55,7 +55,7 @@ void PrintMemoryUsage(void);
 
 int main(int argc, char *argv[]) {
 	int nbNanoNodes = 30;
-	double txRangeNanoNodes = 0.015;
+	double txRangeNanoNodes = 0.020;
 	int macType = 2;
 	int l3Type = 3; //deflection routing
 	int seed = 1;
@@ -84,7 +84,7 @@ void Run(int nbNanoNodes, double txRangeNanoNodes, int macType, int l3Type,
 
 	//timers
 	Time::SetResolution(Time::FS);
-	double duration = 100;
+	double duration = 500;
 
 	//layout details
 	double xrange = 0.05;
