@@ -250,7 +250,7 @@ void Run(int nbNanoNodes, double txRangeNanoNodes, int macType, int l3Type,
 		double energy = 5.0;
 		double maxenergy = 5.0;
 		double harEnergyInterval = 0.1;
-		double harEnergySpeed = 0.0;	// 330 /s
+		int harEnergySpeed = 50;	//除以100
 		//int reduceEnergy = 0;	//for random harvesting
 		double EnergySendPerByte = 8.0 / 2.0 * 100.0 * 4.0 / 1000000.0;
 		double EnergyReceivePerByte = 8.0 / 2.0 * 100.0 * 4.0 / 1000000.0 / 2.0;

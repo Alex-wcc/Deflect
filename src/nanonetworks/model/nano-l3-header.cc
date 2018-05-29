@@ -37,7 +37,7 @@ TypeId NanoL3Header::GetInstanceTypeId(void) const {
 }
 
 uint32_t NanoL3Header::GetSerializedSize(void) const {
-	return 4 + 4 + 4 + 4 + 4 + 4 + 4 + 4 + 4 + 4 + 4;
+	return 4 + 4 + 4 + 4 + 4 + 4 + 4 + 4 + 4 + 4 + 4 + 4 + 4;
 }
 
 void NanoL3Header::Serialize(Buffer::Iterator start) const {
@@ -53,6 +53,9 @@ void NanoL3Header::Serialize(Buffer::Iterator start) const {
 	start.WriteHtonU32(m_deflectrate);
 	start.WriteHtonU32(m_droprate);
 	start.WriteHtonU32(m_energyrate);
+	//for energy prediction
+	start.WriteHtonU32(m_energyharvestsum);
+	start.WriteHtonU32(m_energyconsumesum);
 }
 
 uint32_t NanoL3Header::Deserialize(Buffer::Iterator start) {
@@ -70,6 +73,9 @@ uint32_t NanoL3Header::Deserialize(Buffer::Iterator start) {
 	m_deflectrate = rbuf.ReadNtohU32();
 	m_droprate = rbuf.ReadNtohU32();
 	m_energyrate = rbuf.ReadNtohU32();
+	//for energy prediction
+	m_energyharvestsum = rbuf.ReadNtohU32();
+	m_energyconsumesum = rbuf.ReadNtohU32();
 
 	return rbuf.GetDistanceFrom(start);
 }
@@ -165,6 +171,23 @@ void NanoL3Header::SetEnergyRate(uint32_t energyrate) {
 
 uint32_t NanoL3Header::GetEnergyRate() const {
 	return m_energyrate;
+}
+
+//for energy prediction
+void NanoL3Header::SetEnergyHarvestSum(uint32_t energyharvestsum) {
+	m_energyharvestsum = energyharvestsum;
+}
+
+uint32_t NanoL3Header::GetEnergyHarvestSum() const {
+	return m_energyharvestsum;
+}
+
+void NanoL3Header::SetEnergyConsumeSum(uint32_t energyconsumesum) {
+	m_energyconsumesum = energyconsumesum;
+}
+
+uint32_t NanoL3Header::GetEnergyConsumeSum() const {
+	return m_energyconsumesum;
 }
 } // namespace ns3
 

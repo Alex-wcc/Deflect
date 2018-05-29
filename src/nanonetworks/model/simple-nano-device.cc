@@ -56,10 +56,14 @@ SimpleNanoDevice::SimpleNanoDevice() {
 	m_l3 = 0;
 	m_mpu = 0;
 
+	//for deflection rate loss probability energy status
 	m_SendCount = 0.0;
 	m_DeflectedCount = 0.0;
 	m_ReceiveCount = 0.0;
 	m_ReceiveACKCount = 0.0;
+	//for energy prediction
+	m_energyHarvestSum = 0.0;
+	m_energyConsumeSum = 0.0;
 }
 
 SimpleNanoDevice::~SimpleNanoDevice() {
@@ -258,7 +262,7 @@ void SimpleNanoDevice::SetHarvestEnergyInterTime(double t) {
 	NS_LOG_FUNCTION(this);
 	m_harenergyintertime = t;
 }
-void SimpleNanoDevice::SetHarEnergySpeed(double speed) {
+void SimpleNanoDevice::SetHarEnergySpeed(int speed) {
 	NS_LOG_FUNCTION(this);
 	m_harenergyspeed = speed;
 }
@@ -267,28 +271,34 @@ void SimpleNanoDevice::HarvestEnergy() {
 	NS_LOG_FUNCTION(this);
 
 	//随机能量吸收
-		srand(m_randv);
-		m_randv = m_randv+23;
-		double harenergyspeedThisTime =( (rand() % (50 - 0 + 1)) + 0 )/100.0 + m_harenergyspeed;
+	srand(m_randv);
+	m_randv = m_randv + 23;
+	double harenergyspeedThisTime = ((rand() % (m_harenergyspeed - 0 + 1)) + 0)
+			/ 100.0;
 	double HarEnergyThisTime = m_harenergyintertime * (harenergyspeedThisTime);
 
-	m_energy = m_energy + HarEnergyThisTime;
-
-	if (m_energy > m_maxenergy) {
+	if ((m_energy + HarEnergyThisTime) > m_maxenergy) {
+		//for the energy prediction
+		m_energyHarvestSum = m_energyHarvestSum + m_maxenergy - m_energy;
 		m_energy = m_maxenergy;
-	}
 
+	} else {
+		//for the energy prediction
+		m_energyHarvestSum = m_energyHarvestSum + HarEnergyThisTime;
+		m_energy = m_energy + HarEnergyThisTime;
+	}
 	Simulator::Schedule(Seconds(m_harenergyintertime),
 			&SimpleNanoDevice::HarvestEnergy, this);
 }
 
 void SimpleNanoDevice::ConsumeEnergySend(double packetsize) {
 	NS_LOG_FUNCTION(this);
-
 	//consmue energy
 	double ConsumeEnergyThisTime = packetsize * m_EnergySendPerByte;
 	//计算公式：每个字节8位，一半1一半0，每个pulse100aj，能量效率25%，再转换为pj
 	m_energy = m_energy - ConsumeEnergyThisTime;
+	//for the energy prediction
+	m_energyConsumeSum = m_energyConsumeSum + ConsumeEnergyThisTime;
 	if (m_energy < 0) {
 		m_energy = 0;
 	}
@@ -296,10 +306,11 @@ void SimpleNanoDevice::ConsumeEnergySend(double packetsize) {
 
 void SimpleNanoDevice::ConsumeEnergyReceive(double packetsize) {
 	NS_LOG_FUNCTION(this);
-
 	//consmue energy
 	double ConsumeEnergyThisTime = packetsize * m_EnergyReceivePerByte;
 	//计算公式：每个字节8位，一半1一半0，每个pulse100aj，能量效率25%，再转换为pj
+	//for energy prediction
+	m_energyConsumeSum = m_energyConsumeSum + ConsumeEnergyThisTime;
 	m_energy = m_energy - ConsumeEnergyThisTime;
 	if (m_energy < 0) {
 		m_energy = 0;
@@ -330,6 +341,19 @@ void SimpleNanoDevice::SetNACKSize(double nacksize) {
 	NS_LOG_FUNCTION(this);
 	m_NACKSize = nacksize;
 }
+
+//for energy prediciton
+double SimpleNanoDevice::GetEnergyHarvestSum() const {
+	NS_LOG_FUNCTION(this);
+	return m_energyHarvestSum;
+}
+
+double SimpleNanoDevice::GetEnergyConsumeSum() const {
+	NS_LOG_FUNCTION(this);
+	return m_energyConsumeSum;
+}
+
+//for buffer size of the nanonode
 
 void SimpleNanoDevice::SetBufferSize(uint32_t buffersize) {
 	NS_LOG_FUNCTION(this);

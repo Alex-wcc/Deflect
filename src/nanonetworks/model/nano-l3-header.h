@@ -107,6 +107,12 @@ public:
   void SetEnergyRate(uint32_t energyrate);
   uint32_t GetEnergyRate() const;
 
+  void SetEnergyHarvestSum(uint32_t energyharvestsum);
+  uint32_t GetEnergyHarvestSum() const;
+
+  void SetEnergyConsumeSum(uint32_t energyconsumesum);
+  uint32_t GetEnergyConsumeSum() const;
+
 
 
 private:
@@ -122,6 +128,9 @@ private:
   uint32_t m_deflectrate;
   uint32_t m_droprate;
   uint32_t m_energyrate;
+  //for energy prediction
+  uint32_t m_energyharvestsum;
+  uint32_t m_energyconsumesum;
 };
 
 } // namespace ns3

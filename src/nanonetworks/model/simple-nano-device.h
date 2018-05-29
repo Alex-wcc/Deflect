@@ -126,7 +126,7 @@ public:
 	int GetEnergyCapacity() const;
 	void SetMaxEnergy(double maxenergy);
 	void SetHarvestEnergyInterTime(double t);
-	void SetHarEnergySpeed(double speed);
+	void SetHarEnergySpeed(int speed);
 	void HarvestEnergy(); //reduceenery是一个随机数，用以模拟接收能量随机的情况。
 	//在应用层reducenergy进行随机化，范围有待确定。目前设置为0.表示接受能量一定。
 	//单位是speed
@@ -138,6 +138,10 @@ public:
 	void SetPacketSize(double packetsize);
 	void SetACKSize(double acksize);
 	void SetNACKSize(double nacksize);
+
+	//for energy prediction
+	double GetEnergyHarvestSum() const;
+	double GetEnergyConsumeSum() const;
 
 	void SetBufferSize(uint32_t buffersize);
 
@@ -168,7 +172,7 @@ public:
 	double m_energy;
 	double m_maxenergy;
 	double m_harenergyintertime;
-	double m_harenergyspeed;
+	int m_harenergyspeed;
 
 	double m_EnergySendPerByte;
 	double m_EnergyReceivePerByte;
@@ -178,11 +182,15 @@ public:
 	double m_NACKSize;
 	std::list<Ptr<Packet>> m_queuePacket;
 	uint32_t m_bufferSize;
-	//
+	//for deflection rate, loss probability, energy satatus
 	double m_SendCount;
 	double m_DeflectedCount;
 	double m_ReceiveCount;
 	double m_ReceiveACKCount;
+
+	//for energy prediction
+	double m_energyHarvestSum;
+	double m_energyConsumeSum;
 
 };
 
