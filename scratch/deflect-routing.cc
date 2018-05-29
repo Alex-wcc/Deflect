@@ -250,13 +250,13 @@ void Run(int nbNanoNodes, double txRangeNanoNodes, int macType, int l3Type,
 		double energy = 5.0;
 		double maxenergy = 5.0;
 		double harEnergyInterval = 0.1;
-		double harEnergySpeed = 0.025;	// 330 /s
+		double harEnergySpeed = 0.0;	// 330 /s
 		//int reduceEnergy = 0;	//for random harvesting
 		double EnergySendPerByte = 8.0 / 2.0 * 100.0 * 4.0 / 1000000.0;
 		double EnergyReceivePerByte = 8.0 / 2.0 * 100.0 * 4.0 / 1000000.0 / 2.0;
-		double PacketSize = 168;
-		double ACKSize = 21;
-		double NACKSize = 17;
+		double PacketSize = 130;
+		double ACKSize = 13;
+		double NACKSize = 9;
 		uint32_t buffersize = 1;
 
 		dev->SetEnergySendPerByte(EnergySendPerByte);
@@ -289,20 +289,18 @@ void Run(int nbNanoNodes, double txRangeNanoNodes, int macType, int l3Type,
 
 		//d_nodes.Get(i)->GetObject<SimpleNanoDevice>()->SetEnergyCapacity()
 		//生成随机目的地址；
-		//srand(time(NULL));
-		//srand(time(NULL));//这个随机数？？？？
-		uint32_t dstId = random->GetValue(0, 100);
+		uint32_t dstId = random->GetValue(0, 25);
 		mpu->SetDstId(dstId);
 
+		//可以执行，从一个随机时间开始发送数据
 		double startTime = random->GetValue(0.0, 15);
-		//double startTime1 = random->GetValue(0.0,0.1);可以执行，从一个随机时间开始收集能量
-
 		Simulator::Schedule(Seconds(startTime),
 				&MessageProcessUnit::CreteMessage, mpu);
 
-// let the node start harvest energy
+        // let the node start harvest energy
 		Ptr<SimpleNanoDevice> dev =
 				d_nodes.Get(i)->GetObject<SimpleNanoDevice>();
+		//可以执行，从一个随机时间开始收集能量
 		double harstartTime = random->GetValue(0.0, 0.1);
 		Simulator::Schedule(Seconds(harstartTime),
 				&SimpleNanoDevice::HarvestEnergy, dev);

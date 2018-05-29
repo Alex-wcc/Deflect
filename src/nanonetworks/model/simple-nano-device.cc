@@ -269,8 +269,8 @@ void SimpleNanoDevice::HarvestEnergy() {
 	//随机能量吸收
 		srand(m_randv);
 		m_randv = m_randv+23;
-		double harenergyspeedThisTime =( (rand() % (50 - 25 + 1)) + 25 )/100.0+ m_harenergyspeed;
-	uint32_t HarEnergyThisTime = m_harenergyintertime * (harenergyspeedThisTime);
+		double harenergyspeedThisTime =( (rand() % (50 - 0 + 1)) + 0 )/100.0 + m_harenergyspeed;
+	double HarEnergyThisTime = m_harenergyintertime * (harenergyspeedThisTime);
 
 	m_energy = m_energy + HarEnergyThisTime;
 
@@ -288,7 +288,7 @@ void SimpleNanoDevice::ConsumeEnergySend(double packetsize) {
 	//consmue energy
 	double ConsumeEnergyThisTime = packetsize * m_EnergySendPerByte;
 	//计算公式：每个字节8位，一半1一半0，每个pulse100aj，能量效率25%，再转换为pj
-	m_energy = m_energy + ConsumeEnergyThisTime;
+	m_energy = m_energy - ConsumeEnergyThisTime;
 	if (m_energy < 0) {
 		m_energy = 0;
 	}
@@ -300,7 +300,7 @@ void SimpleNanoDevice::ConsumeEnergyReceive(double packetsize) {
 	//consmue energy
 	double ConsumeEnergyThisTime = packetsize * m_EnergyReceivePerByte;
 	//计算公式：每个字节8位，一半1一半0，每个pulse100aj，能量效率25%，再转换为pj
-	m_energy = m_energy + ConsumeEnergyThisTime;
+	m_energy = m_energy - ConsumeEnergyThisTime;
 	if (m_energy < 0) {
 		m_energy = 0;
 	}

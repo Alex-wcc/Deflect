@@ -131,6 +131,8 @@ void MessageProcessUnit::PrintNodestatus()
 void MessageProcessUnit::ProcessMessage(Ptr<Packet> p) {
 	NS_LOG_FUNCTION(this);
 
+	int packetsize = p->GetSize();
+
 	NanoL3Header l3Header;
 	p->RemoveHeader(l3Header);
 
@@ -143,7 +145,7 @@ void MessageProcessUnit::ProcessMessage(Ptr<Packet> p) {
 	double delay = Simulator::Now().GetPicoSeconds()
 			- seqTs.GetTs().GetPicoSeconds();
 
-	m_outRX(seqTs.GetSeq(), p->GetSize(), (int) l3Header.GetSource(),
+	m_outRX(seqTs.GetSeq(), packetsize/*p->GetSize()*/, (int) l3Header.GetSource(),
 			(int) GetDevice()->GetNode()->GetId(), delay,
 			(int) l3Header.GetTtl(), (int) l3Header.GetHopCount(),
 			(int) l3Header.GetQHopCount());
