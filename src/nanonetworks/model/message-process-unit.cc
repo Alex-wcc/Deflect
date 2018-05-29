@@ -80,12 +80,12 @@ Ptr<SimpleNanoDevice> MessageProcessUnit::GetDevice(void) {
 void MessageProcessUnit::CreteMessage() {
 	NS_LOG_FUNCTION(this);
 
-	if (m_device->m_energy < 21
+	if (m_device->m_energy < GetDevice()->m_EnergySendPerByte * GetDevice()->m_PacketSize + GetDevice()->m_EnergyReceivePerByte * GetDevice()->m_ACKSize
 			|| m_device->m_queuePacket.size() >= GetDevice()->m_bufferSize) {
 
 		int energy = GetDevice()->m_energy;
 		energy = energy + 1;
-	} else if (m_device->m_energy >= 21
+	} else if (m_device->m_energy >= GetDevice()->m_EnergySendPerByte * GetDevice()->m_PacketSize + GetDevice()->m_EnergyReceivePerByte * GetDevice()->m_ACKSize
 			&& m_device->m_queuePacket.size() < m_device->m_bufferSize) {
 		uint8_t *buffer = new uint8_t[m_packetSize = 102];
 		for (int i = 0; i < m_packetSize; i++) {
@@ -100,7 +100,7 @@ void MessageProcessUnit::CreteMessage() {
 		m_randv = m_randv + 50;
 		m_dstId = m_device->GetNode()->GetId();
 		while (m_dstId == m_device->GetNode()->GetId()) {
-			m_dstId = (rand() % (29 - 0 + 1)) + 0;
+			m_dstId = (rand() % (24 - 0 + 1)) + 0;
 		}
 
 		//这里对interarrivaltime 进行随机处理。

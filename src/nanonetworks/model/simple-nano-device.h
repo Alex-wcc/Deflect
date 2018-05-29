@@ -122,23 +122,22 @@ public:
 	Ptr<MessageProcessUnit> GetMessageProcessUnit(void);
 
 	//Harvest energy from environment
-	void SetEnergyCapacity(int energy);
+	void SetEnergyCapacity(double energy);
 	int GetEnergyCapacity() const;
-	void SetMaxEnergy(int maxenergy);
+	void SetMaxEnergy(double maxenergy);
 	void SetHarvestEnergyInterTime(double t);
-	void SetHarEnergySpeed(int speed);
+	void SetHarEnergySpeed(double speed);
 	void HarvestEnergy(); //reduceenery是一个随机数，用以模拟接收能量随机的情况。
 	//在应用层reducenergy进行随机化，范围有待确定。目前设置为0.表示接受能量一定。
 	//单位是speed
-	void SetEnergySendPacket(int energysendpacket);
-	void SetEnergyRecPacket(int energyrecpacket);
-	void SetEnergySendACK(int energysendack);
-	void SetEnergyRecACK(int energyrecack);
-	//Consume Energy
-	void ConsumeEnergySendPacket();
-	void ConsumeEnergyRecPacket();
-	void ConsumeEnergySendACK();
-	void ConsumeEnergyRecACK();
+	void ConsumeEnergySend(double packetsize);
+	void ConsumeEnergyReceive(double packetsize);
+
+	void SetEnergySendPerByte(double energysendperbyte);
+	void SetEnergyReceivePerByte(double energyreceiveperbyte);
+	void SetPacketSize(double packetsize);
+	void SetACKSize(double acksize);
+	void SetNACKSize(double nacksize);
 
 	void SetBufferSize(uint32_t buffersize);
 
@@ -158,7 +157,6 @@ private:
 	//为了随机能量吸收速率
 	uint32_t m_randv;
 
-
 public:
 	int m_seed;
 	int m_nodes;
@@ -167,14 +165,17 @@ public:
 	int m_gates;
 	int m_routers;
 	//下面的都会初始化的吧？上面的也是，所以在后面的cc文件里面没有，初始化函数没有进行初始化。
-	int m_energy;
-	int m_maxenergy;
+	double m_energy;
+	double m_maxenergy;
 	double m_harenergyintertime;
-	int m_harenergyspeed;
-	int m_energysendpacket;
-	int m_energyrecpacket;
-	int m_energysendack;
-	int m_energyrecack;
+	double m_harenergyspeed;
+
+	double m_EnergySendPerByte;
+	double m_EnergyReceivePerByte;
+
+	double m_PacketSize;
+	double m_ACKSize;
+	double m_NACKSize;
 	std::list<Ptr<Packet>> m_queuePacket;
 	uint32_t m_bufferSize;
 	//

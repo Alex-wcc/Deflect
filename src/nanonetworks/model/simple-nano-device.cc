@@ -239,7 +239,7 @@ Ptr<NanoRoutingEntity> SimpleNanoDevice::GetL3() const {
 	return m_l3;
 }
 
-void SimpleNanoDevice::SetEnergyCapacity(int energy) {
+void SimpleNanoDevice::SetEnergyCapacity(double energy) {
 	NS_LOG_FUNCTION(this);
 	m_energy = energy;
 }
@@ -249,7 +249,7 @@ int SimpleNanoDevice::GetEnergyCapacity() const {
 	return m_energy;
 }
 
-void SimpleNanoDevice::SetMaxEnergy(int maxenergy) {
+void SimpleNanoDevice::SetMaxEnergy(double maxenergy) {
 	NS_LOG_FUNCTION(this);
 	m_maxenergy = maxenergy;
 }
@@ -258,7 +258,7 @@ void SimpleNanoDevice::SetHarvestEnergyInterTime(double t) {
 	NS_LOG_FUNCTION(this);
 	m_harenergyintertime = t;
 }
-void SimpleNanoDevice::SetHarEnergySpeed(int speed) {
+void SimpleNanoDevice::SetHarEnergySpeed(double speed) {
 	NS_LOG_FUNCTION(this);
 	m_harenergyspeed = speed;
 }
@@ -269,8 +269,8 @@ void SimpleNanoDevice::HarvestEnergy() {
 	//随机能量吸收
 		srand(m_randv);
 		m_randv = m_randv+23;
-		m_harenergyspeed = (rand() % (10 - 0 + 1)) + 0;
-	uint32_t HarEnergyThisTime = m_harenergyintertime * (m_harenergyspeed);
+		double harenergyspeedThisTime =( (rand() % (50 - 25 + 1)) + 25 )/100.0+ m_harenergyspeed;
+	uint32_t HarEnergyThisTime = m_harenergyintertime * (harenergyspeedThisTime);
 
 	m_energy = m_energy + HarEnergyThisTime;
 
@@ -282,56 +282,53 @@ void SimpleNanoDevice::HarvestEnergy() {
 			&SimpleNanoDevice::HarvestEnergy, this);
 }
 
-void SimpleNanoDevice::SetEnergySendPacket(int energysendpacket) {
+void SimpleNanoDevice::ConsumeEnergySend(double packetsize) {
 	NS_LOG_FUNCTION(this);
-	m_energysendpacket = energysendpacket;
-}
 
-void SimpleNanoDevice::SetEnergyRecPacket(int energyrecpacket) {
-	NS_LOG_FUNCTION(this);
-	m_energyrecpacket = energyrecpacket;
-}
-
-void SimpleNanoDevice::SetEnergySendACK(int energysendack) {
-	NS_LOG_FUNCTION(this);
-	m_energysendack = energysendack;
-}
-
-void SimpleNanoDevice::SetEnergyRecACK(int energyrecack) {
-	NS_LOG_FUNCTION(this);
-	m_energyrecack = energyrecack;
-}
-
-void SimpleNanoDevice::ConsumeEnergySendPacket() {
-	NS_LOG_FUNCTION(this);
-	m_energy = m_energy - m_energysendpacket;
+	//consmue energy
+	double ConsumeEnergyThisTime = packetsize * m_EnergySendPerByte;
+	//计算公式：每个字节8位，一半1一半0，每个pulse100aj，能量效率25%，再转换为pj
+	m_energy = m_energy + ConsumeEnergyThisTime;
 	if (m_energy < 0) {
 		m_energy = 0;
 	}
 }
 
-void SimpleNanoDevice::ConsumeEnergyRecPacket() {
+void SimpleNanoDevice::ConsumeEnergyReceive(double packetsize) {
 	NS_LOG_FUNCTION(this);
-	m_energy = m_energy - m_energyrecpacket;
+
+	//consmue energy
+	double ConsumeEnergyThisTime = packetsize * m_EnergyReceivePerByte;
+	//计算公式：每个字节8位，一半1一半0，每个pulse100aj，能量效率25%，再转换为pj
+	m_energy = m_energy + ConsumeEnergyThisTime;
 	if (m_energy < 0) {
 		m_energy = 0;
 	}
 }
 
-void SimpleNanoDevice::ConsumeEnergySendACK() {
+void SimpleNanoDevice::SetEnergySendPerByte(double energysendperbyte) {
 	NS_LOG_FUNCTION(this);
-	m_energy = m_energy - m_energysendack;
-	if (m_energy < 0) {
-		m_energy = 0;
-	}
+	m_EnergySendPerByte = energysendperbyte;
 }
 
-void SimpleNanoDevice::ConsumeEnergyRecACK() {
+void SimpleNanoDevice::SetEnergyReceivePerByte(double energyreceiveperbyte) {
 	NS_LOG_FUNCTION(this);
-	m_energy = m_energy - m_energyrecack;
-	if (m_energy < 0) {
-		m_energy = 0;
-	}
+	m_EnergyReceivePerByte = energyreceiveperbyte;
+}
+
+void SimpleNanoDevice::SetPacketSize(double packetsize) {
+	NS_LOG_FUNCTION(this);
+	m_PacketSize = packetsize;
+}
+
+void SimpleNanoDevice::SetACKSize(double acksize) {
+	NS_LOG_FUNCTION(this);
+	m_ACKSize = acksize;
+}
+
+void SimpleNanoDevice::SetNACKSize(double nacksize) {
+	NS_LOG_FUNCTION(this);
+	m_NACKSize = nacksize;
 }
 
 void SimpleNanoDevice::SetBufferSize(uint32_t buffersize) {

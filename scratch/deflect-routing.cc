@@ -54,8 +54,8 @@ void PrintSimulationTime(double duration);
 void PrintMemoryUsage(void);
 
 int main(int argc, char *argv[]) {
-	int nbNanoNodes = 30;
-	double txRangeNanoNodes = 0.020;
+	int nbNanoNodes = 25;
+	double txRangeNanoNodes = 0.02;
 	int macType = 2;
 	int l3Type = 3; //deflection routing
 	int seed = 1;
@@ -89,6 +89,7 @@ void Run(int nbNanoNodes, double txRangeNanoNodes, int macType, int l3Type,
 	//layout details
 	double xrange = 0.05;
 	double yrange = 0.05; //为什么y轴也是0呢？但是画出来的话明明有xy值呀。
+    //double zrange = 0;
 	//double zrange = 0.001;
 
 	//physical details
@@ -158,29 +159,33 @@ void Run(int nbNanoNodes, double txRangeNanoNodes, int macType, int l3Type,
 	d_nodes = nano.Install(n_nodes, NanoHelper::nanonode);
 
 	//mobility need to revised it
-	/*MobilityHelper mobility;
+	/*
+	 MobilityHelper mobility;
 	 mobility.SetMobilityModel("ns3::GaussMarkovMobilityModel", "Bounds",
 	 BoxValue(Box(0, xrange, 0, yrange, 0, zrange)), "TimeStep",
 	 TimeValue(Seconds(0.001)), "Alpha", DoubleValue(0), "MeanVelocity",
-	 StringValue("ns3::UniformRandomVariable[Min=0.00|Max=0.00]"),
+	 StringValue("ns3::UniformRandomVariable[Min=0.00|Max=0.001]"),
 	 "MeanDirection",
-	 StringValue("ns3::UniformRandomVariable[Min=0|Max=0]"), "MeanPitch",
 	 StringValue("ns3::UniformRandomVariable[Min=0.00|Max=0.00]"),
+	 "MeanPitch",
+	 StringValue("ns3::UniformRandomVariable[Min=0.00|Max=0.001]"),
 	 "NormalVelocity",
 	 StringValue(
-	 "ns3::NormalRandomVariable[Mean=0.0|Variance=0.0|Bound=0.0]"),
+	 "ns3::NormalRandomVariable[Mean=0.00|Variance=0.00|Bound=0.0]"),
 	 "NormalDirection",
 	 StringValue(
-	 "ns3::NormalRandomVariable[Mean=0.0|Variance=0.0|Bound=0.0]"),
+	 "ns3::NormalRandomVariable[Mean=0.00|Variance=0.001|Bound=0.001]"),
 	 "NormalPitch",
 	 StringValue(
-	 "ns3::NormalRandomVariable[Mean=0.0|Variance=0.0|Bound=0.0]"));
+	 "ns3::NormalRandomVariable[Mean=0.00|Variance=0.001|Bound=0.001]"));
 	 mobility.SetPositionAllocator("ns3::RandomBoxPositionAllocator", "X",
-	 StringValue("ns3::UniformRandomVariable[Min=0.0|Max=0.15]"),//RandomVariableValue (UniformVariable (0, xrange)),
-	 "Y", StringValue("ns3::UniformRandomVariable[Min=0.0|Max=0.01]"),//RandomVariableValue (UniformVariable (0, yrange)),
-	 "Z", StringValue("ns3::UniformRandomVariable[Min=0.0|Max=0.001]"));	//RandomVariableValue (UniformVariable (0, zrange)));
-	 mobility.Install(n_nodes);*/
-
+	 StringValue("ns3::UniformRandomVariable[Min=0.0|Max=0.05]"),//RandomVariableValue (UniformVariable (0, xrange)),
+	 "Y", StringValue("ns3::UniformRandomVariable[Min=0.0|Max=0.05]"),//RandomVariableValue (UniformVariable (0, yrange)),
+	 "Z", StringValue("ns3::UniformRandomVariable[Min=0.0|Max=0]"));	//RandomVariableValue (UniformVariable (0, zrange)));
+	 */
+	/*	 mobility.SetMobilityModel ("ns3::RandomWalk2dMobilityModel",
+	 "Bounds", RectangleValue (Rectangle (0, 0.05, 0, 0.05)));*/
+//	 mobility.Install(n_nodes);
 	//protocol stack
 	for (uint16_t i = 0; i < d_nodes.GetN(); i++) {
 		Ptr<NanoNodeDevice> dev = d_nodes.Get(i)->GetObject<NanoNodeDevice>();
@@ -242,25 +247,30 @@ void Run(int nbNanoNodes, double txRangeNanoNodes, int macType, int l3Type,
 				MakeBoundCallback(&PrintPHYCOLLEvents, streamPHYCOLL));
 
 //物理层之后是节点本身
-		int energy = 300;
-		int maxenergy = 300;
+		double energy = 5.0;
+		double maxenergy = 5.0;
 		double harEnergyInterval = 0.1;
-		int harEnergySpeed = 40;	// 330 /s
+		double harEnergySpeed = 0.025;	// 330 /s
 		//int reduceEnergy = 0;	//for random harvesting
-		int energySendPacket = 20;
-		int energyRecPacket = 10;
-		int energySendACK = 2;
-		int energyRecACK = 1;
+		double EnergySendPerByte = 8.0 / 2.0 * 100.0 * 4.0 / 1000000.0;
+		double EnergyReceivePerByte = 8.0 / 2.0 * 100.0 * 4.0 / 1000000.0 / 2.0;
+		double PacketSize = 168;
+		double ACKSize = 21;
+		double NACKSize = 17;
 		uint32_t buffersize = 1;
+
+		dev->SetEnergySendPerByte(EnergySendPerByte);
+		dev->SetEnergyReceivePerByte(EnergyReceivePerByte);
+		dev->SetPacketSize(PacketSize);
+		dev->SetACKSize(ACKSize);
+		dev->SetNACKSize(NACKSize);
 
 		dev->SetEnergyCapacity(energy);
 		dev->SetMaxEnergy(maxenergy);
 		dev->SetHarvestEnergyInterTime(harEnergyInterval);
 		dev->SetHarEnergySpeed(harEnergySpeed);
-		dev->SetEnergySendPacket(energySendPacket);
-		dev->SetEnergyRecPacket(energyRecPacket);
-		dev->SetEnergySendACK(energySendACK);
-		dev->SetEnergyRecACK(energyRecACK);
+
+
 		dev->SetBufferSize(buffersize);
 
 	}
