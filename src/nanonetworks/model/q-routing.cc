@@ -71,6 +71,17 @@ QRouting::QRouting() {
 	m_prenode.push_back(OwnPreNode);
 	m_sendBuffer = 0;	//因为没有初始化，所以在这里进行初始化。
 	m_SendingTag = false;	//正在发送的标记位，初始化位false
+
+	/*//能量限制，每次要发送或者接受都需要判断一下能量是否足够等。
+	SendPacketRecACK = GetDevice()->m_EnergySendPerByte
+			* GetDevice()->m_PacketSize
+			+ GetDevice()->m_EnergyReceivePerByte * GetDevice()->m_ACKSize;
+	RecACK = GetDevice()->m_EnergyReceivePerByte * GetDevice()->m_ACKSize;
+	RecPacketForward = GetDevice()->m_EnergySendPerByte
+			* GetDevice()->m_PacketSize
+			+ GetDevice()->m_EnergyReceivePerByte * GetDevice()->m_ACKSize
+			+ GetDevice()->m_EnergySendPerByte * GetDevice()->m_ACKSize
+			+ GetDevice()->m_EnergySendPerByte * GetDevice()->m_PacketSize;*/
 }
 
 QRouting::~QRouting() {
@@ -82,7 +93,8 @@ void QRouting::DoDispose() {
 }
 
 void QRouting::AddRoute(uint32_t dstId, uint32_t nextId, uint32_t Qvalue,
-		uint32_t HopCount) {
+		uint32_t HopCount, double energyharvestspeed, double energyconsumespeed,
+		double energyconsumerate) {
 	//if the route is already there, it will not be added.
 	//but upper layer will charge this.
 	NS_LOG_FUNCTION(
@@ -94,14 +106,18 @@ void QRouting::AddRoute(uint32_t dstId, uint32_t nextId, uint32_t Qvalue,
 	Qroute.RecRate = 0.1;
 	Qroute.HopCount = HopCount;
 	Qroute.UpTime = Simulator::Now().GetSeconds();
-	;
 	Qroute.RouteValid = true;
+	//for energy prediction
+	Qroute.energyharvestspeed = energyharvestspeed;
+	Qroute.energyconsumespeed = energyconsumespeed;
+	Qroute.energyconsumerate = energyconsumerate;
 
 	m_qtable.push_back(Qroute);
 }
 
 void QRouting::AddPreNodeNew(uint32_t dstId, uint32_t nextId, uint32_t Qvalue,
-		uint32_t HopCount) {
+		uint32_t HopCount, double energyharvestspeed, double energyconsumespeed,
+		double energyconsumerate) {
 	NS_LOG_FUNCTION(
 			"AddPreNode: dstId:"<<dstId<<"nextId:"<<nextId<<"Qvalue"<<Qvalue<<"HopCount"<<HopCount);
 	PreNodeEntry PreNode;
@@ -113,6 +129,10 @@ void QRouting::AddPreNodeNew(uint32_t dstId, uint32_t nextId, uint32_t Qvalue,
 	PreNode.RecRate = 0.1;
 	PreNode.UpTime = Simulator::Now().GetSeconds();
 	PreNode.PreNodeValid = true;
+	//for energy prediction
+	PreNode.energyharvestspeed = energyharvestspeed;
+	PreNode.energyconsumespeed = energyconsumespeed;
+	PreNode.energyconsumerate = energyconsumerate;
 	m_prenode.push_back(PreNode);
 }
 //route look up
@@ -156,7 +176,7 @@ void QRouting::SetRouteUn(uint32_t nextId) {
 		j++;
 	}
 	//0.1秒后，进行重置，但是这里的 秒需要根据能量捕获速率来进行调整。
-	Simulator::Schedule(Seconds(1), &QRouting::SetRouteAv, this, nextId);
+	Simulator::Schedule(Seconds(3), &QRouting::SetRouteAv, this, nextId);
 }
 void QRouting::SetRouteAv(uint32_t nextId) {
 	std::vector<QTableEntry>::iterator it = m_qtable.begin();
@@ -260,39 +280,69 @@ uint32_t QRouting::ChooseDeflectNode(uint32_t dstId, uint32_t routeNextId) {
 
 	uint16_t i = 0;
 	uint16_t j = 0; //用于比大小
-	//PreNodeEntry PreNode;
-	//double qvalue;
+
 	PreNodeEntry cPreNode;
-	//double cqvalue;
+	//prediction, 预测还有能量才选择。
+	double energystatus_pre_c;
+	double energy_min_send = GetDevice()->m_EnergySendPerByte
+			* GetDevice()->m_PacketSize
+			+ GetDevice()->m_EnergyReceivePerByte * GetDevice()->m_ACKSize;
 	double deltaT = Simulator::Now().GetSeconds();
 
 	for (; it != m_prenode.end(); ++it) {
 		if (it->dstId == dstId && it->nodeId != routeNextId
 				&& it->PreNodeValid == true) {
-			j = i;
-			break;
+
+			energystatus_pre_c = (1 - it->energyconsumerate)
+					* GetDevice()->m_maxenergy
+					+ (it->energyharvestspeed - it->energyconsumespeed)
+							* (Simulator::Now().GetSeconds() - it->UpTime);
+			//小于最小发射能量就不选择了。
+			if (energystatus_pre_c >= energy_min_send) {
+				j = i;
+				break;
+			}
 		}
 		i++;
 	}
 	cPreNode = m_prenode[j];
-	//cqvalue = cPreNode.Qvalue;
 
+	//迭代寻找最有的节点。
+	double energyconsumerate_pre_it;
+	double energyconsumerate_pre_c = (cPreNode.energyconsumerate
+			* GetDevice()->m_maxenergy
+			+ (cPreNode.energyharvestspeed - cPreNode.energyconsumespeed)
+					* (Simulator::Now().GetSeconds() - cPreNode.UpTime))
+			/ GetDevice()->m_maxenergy;
 	for (int i = 0; it != m_prenode.end(); ++it) {
 		if (it->dstId == dstId && it->nodeId != routeNextId
 				&& it->PreNodeValid == true) {
 
-			if (it->Qvalue + (deltaT - it->UpTime) * it->RecRate
-					< cPreNode.Qvalue
-							+ (deltaT - cPreNode.UpTime) * cPreNode.RecRate) { // 寻找最小值
+			energyconsumerate_pre_it = (it->energyconsumerate
+					* GetDevice()->m_maxenergy
+					+ (it->energyharvestspeed - it->energyconsumespeed)
+							* (Simulator::Now().GetSeconds() - it->UpTime))
+					/ GetDevice()->m_maxenergy;
+
+			if ((it->Qvalue + (deltaT - it->UpTime) * it->RecRate)
+					* energyconsumerate_pre_it
+					< (cPreNode.Qvalue
+							+ (deltaT - cPreNode.UpTime) * cPreNode.RecRate)
+							* energyconsumerate_pre_c) { // 寻找最小值
 				j = i;
 				cPreNode = m_prenode[j];
+				energyconsumerate_pre_c = (cPreNode.energyconsumerate
+						* GetDevice()->m_maxenergy
+						+ (cPreNode.energyharvestspeed
+								- cPreNode.energyconsumespeed)
+								* (Simulator::Now().GetSeconds()
+										- cPreNode.UpTime))
+						/ GetDevice()->m_maxenergy;
 			}
 		}
 		i++;
 	}
 
-	//PreNode = m_prenode.at(i);
-	//cPreNode = m_prenode.at(j);
 	if (i < m_prenode.size()) {
 		return cPreNode.nodeId;
 	} else {
@@ -320,10 +370,11 @@ bool QRouting::SearchPreNode(uint32_t dstId, uint32_t nextId) {
 
 //update the q talbe of a route
 uint32_t QRouting::UpdateQvalue(uint32_t dstId, double preReward,
-		uint32_t HopCount) {
+		uint32_t HopCount, double energyharvestspeed, double energyconsumespeed,
+		double energyconsumerate) {
 	std::vector<QTableEntry>::iterator it = m_qtable.begin();
 
-	uint16_t i=0;
+	uint16_t i = 0;
 	for (; it != m_qtable.end(); ++it) {
 		if (it->dstId == dstId && it->dstId != 999) {
 			break;
@@ -354,6 +405,9 @@ uint32_t QRouting::UpdateQvalue(uint32_t dstId, double preReward,
 		}
 		//update the update time
 		Qroute.UpTime = Timenow;
+		Qroute.energyharvestspeed = energyharvestspeed;
+		Qroute.energyconsumespeed = energyconsumespeed;
+		Qroute.energyconsumerate = energyconsumerate;
 		return Qroute.Qvalue;
 	} else {
 		return 996;
@@ -361,7 +415,8 @@ uint32_t QRouting::UpdateQvalue(uint32_t dstId, double preReward,
 }
 
 void QRouting::UpdatePreNode(uint32_t dstId, uint32_t nextId, double reward,
-		uint32_t HopCount) {
+		uint32_t HopCount, double energyharvestspeed, double energyconsumespeed,
+		double energyconsumerate) {
 	std::vector<PreNodeEntry>::iterator it = m_prenode.begin();
 
 	uint16_t i = 0;
@@ -385,6 +440,10 @@ void QRouting::UpdatePreNode(uint32_t dstId, uint32_t nextId, double reward,
 			PreNode.RecRate = 0.9 * PreNode.RecRate;
 		}
 		PreNode.UpTime = Timenow;
+		//for energy prediction
+		PreNode.energyharvestspeed = energyharvestspeed;
+		PreNode.energyconsumespeed = energyconsumespeed;
+		PreNode.energyconsumerate = energyconsumerate;
 	}
 }
 
@@ -447,9 +506,6 @@ void QRouting::SendPacketDst(Ptr<Packet> p, uint32_t dstNodeId) {
 		uint32_t dst = dstNodeId; //目的地址
 		//uint32_t nextId = 999; //GetDevice()->GetNode()->GetId(); //如果找不到就给自己。
 
-		// for the energy prediction
-		uint32_t energyharvestsum = GetDevice()->GetEnergyHarvestSum() * 1000.0;
-		uint32_t energyconsumesum = GetDevice()->GetEnergyConsumeSum() * 1000.0;
 		//确定头部的内容
 		NanoL3Header header;
 		uint32_t src = GetDevice()->GetNode()->GetId();
@@ -468,9 +524,7 @@ void QRouting::SendPacketDst(Ptr<Packet> p, uint32_t dstNodeId) {
 		header.SetDeflectRate(0);
 		header.SetDropRate(0);
 		header.SetEnergyRate(0);
-		//for enregy prediction
-		header.SetEnergyHarvestSum(energyharvestsum);
-		header.SetEnergyConsumeSum(energyconsumesum);
+
 		p->AddHeader(seqTs);
 		p->AddHeader(header);
 
@@ -504,7 +558,9 @@ void QRouting::ReceivePacket(Ptr<Packet> p) {
 
 		if (p->GetSize() < 102)	//因为一个正常的包的大小是102bytes，所以小于这个大小的时候就是ACK
 				{
-			if (GetDevice()->m_energy < 1) {
+			if (GetDevice()->m_energy
+					< GetDevice()->m_EnergyReceivePerByte
+							* GetDevice()->m_ACKSize) {
 				int energy = GetDevice()->m_energy;
 				energy = energy + 1;
 			} else {
@@ -567,18 +623,31 @@ void QRouting::ReceivePacket(Ptr<Packet> p) {
 				double droprate = l3Header.GetDropRate();
 				double energyrate = l3Header.GetEnergyRate();
 
+				//for energy prediction
+				double energyharvestspeed = l3Header.GetEnergyHarvestSum()
+						/ 100000.0 / Simulator::Now().GetSeconds();
+				//energyharvestsum = energyharvestsum + 1;
+				double energyconsumespeed = l3Header.GetEnergyConsumeSum()
+						/ 100000.0 / Simulator::Now().GetSeconds();
+				//energyconsumesum = energyconsumesum + 1;
+				double time = Simulator::Now().GetSeconds();
+				time = time + 1;
 				uint32_t thisid = GetDevice()->GetNode()->GetId();
-                //下面这个函数打印节点的状态，在收到一个数据包后进行打印
+				//下面这个函数打印节点的状态，在收到一个数据包后进行打印
 				GetDevice()->GetMessageProcessUnit()->PrintNodestatus();
 				//！！！！！update the q routing table and prenode table
 				bool PreNodeE = SearchPreNode(from, previous);
 				if (hopcount == 1) {
 					if (!PreNodeE && previous != thisid) {
 						//add the q value table, i.e. the prenode
-						AddPreNodeNew(from, previous, qvalue, hopcount);
+						AddPreNodeNew(from, previous, qvalue, hopcount,
+								energyharvestspeed, energyconsumespeed,
+								energyrate);
 						uint32_t route = LookupRoute(from);
 						if (route == 991 && previous != thisid) {//路由表中已经有记录了，就不行进行增加了
-							AddRoute(from, previous, qvalue, hopcount);
+							AddRoute(from, previous, qvalue, hopcount,
+									energyharvestspeed, energyconsumespeed,
+									energyrate);
 						}
 						//AddRoute(from, previous, qvalue, hopcount);
 					} else {
@@ -586,20 +655,29 @@ void QRouting::ReceivePacket(Ptr<Packet> p) {
 					}
 				} else {		//跳数大于一跳
 					if (!PreNodeE && previous != thisid) {
-						AddPreNodeNew(from, previous, qvalue, hopcount);
+						AddPreNodeNew(from, previous, qvalue, hopcount,
+								energyharvestspeed, energyconsumespeed,
+								energyrate);
 						uint32_t route = LookupRoute(from);
 						if (route == 991 && previous != thisid) {//路由表中已经有记录了，就不行进行增加了
-							AddRoute(from, previous, qvalue, hopcount);
+							AddRoute(from, previous, qvalue, hopcount,
+									energyharvestspeed, energyconsumespeed,
+									energyrate);
 						}
 					} else if (PreNodeE && previous != thisid) {
 						//
 						//对routingtable 进行更新
+						//energyrate是指消耗的能量的多少
+						//这里的1+。。。感觉应该对原来论文中的公式进行修改。或者去掉这里的1+？？？感觉还是更偏向于前者。
 						double preReward = qvalue * (qhopcount + 1)
 								* (1 + deflectrate) * (1 + droprate)
 								* (1 + energyrate) / 1000000;
-						UpdatePreNode(from, previous, preReward, qhopcount);
+						UpdatePreNode(from, previous, preReward, qhopcount,
+								energyharvestspeed, energyconsumespeed,
+								energyrate);
 						uint32_t newQvalue = UpdateQvalue(from, preReward,
-								qhopcount);					//更新路由表上的Q值
+								qhopcount, energyharvestspeed,
+								energyconsumespeed, energyrate);	//更新路由表上的Q值
 						if (newQvalue == 996) {
 						} else {
 							UpdateRoute(from, previous, newQvalue, qhopcount);
@@ -652,11 +730,13 @@ void QRouting::SendACKPacket(uint32_t fromId) {
 	header.SetDeflectRate(0);
 	header.SetDropRate(0);
 	header.SetEnergyRate(0);
+// for the energy prediction
+	uint32_t energyharvestsum = GetDevice()->GetEnergyHarvestSum() * 100000.0;
+	uint32_t energyconsumesum = GetDevice()->GetEnergyConsumeSum() * 100000.0;
+	header.SetEnergyHarvestSum(energyharvestsum);
+	header.SetEnergyConsumeSum(energyconsumesum);
 	ack->AddHeader(seqTs);
 	ack->AddHeader(header);
-	//for enregy prediction
-	header.SetEnergyHarvestSum(0);
-	header.SetEnergyConsumeSum(0);
 	Ptr<NanoMacEntity> mac = GetDevice()->GetMac();
 	mac->Send(ack, fromId);
 }
@@ -667,7 +747,7 @@ void QRouting::ForwardPacket(Ptr<Packet> p) {
 void QRouting::ForwardPacket1(Ptr<Packet> p, uint32_t macfrom) {
 	NS_LOG_FUNCTION(this);
 
-	//uint32_t nextId = 99;		// GetDevice()->GetNode()->GetId();	//如果找不到就给自己。
+//uint32_t nextId = 99;		// GetDevice()->GetNode()->GetId();	//如果找不到就给自己。
 	Ptr<Packet> p1 = p;
 
 	NanoL3Header l3Header;
@@ -676,8 +756,8 @@ void QRouting::ForwardPacket1(Ptr<Packet> p, uint32_t macfrom) {
 	NS_LOG_FUNCTION(this<<l3Header);
 	NS_LOG_FUNCTION(this<<"packet id"<< id<< "from"<<macfrom);
 
-	//uint32_t from = l3Header.GetSource();
-	//uint32_t to = l3Header.GetDestination();
+//uint32_t from = l3Header.GetSource();
+//uint32_t to = l3Header.GetDestination();
 	uint32_t headerQvalue = l3Header.GetQvalue();	//
 	uint32_t hopcount = l3Header.GetHopCount();	//
 	uint32_t ttl = l3Header.GetTtl();
@@ -690,6 +770,7 @@ void QRouting::ForwardPacket1(Ptr<Packet> p, uint32_t macfrom) {
 		l3Header.SetPrevious(thisid);
 		l3Header.SetQvalue(headerQvalue);
 		l3Header.SetQHopCount(qhopcount);		//将搜索到的路由表中的跳数用于q值的更新。
+
 		NS_LOG_FUNCTION(this<<"forward new l3 header"<<l3Header);
 		p->AddHeader(l3Header);
 
@@ -815,6 +896,13 @@ void QRouting::SendPacketBuf() {
 				l3Header.SetDeflectRate(deflectrate);
 				l3Header.SetDropRate(droprate);
 				l3Header.SetEnergyRate(energyrate);
+				// for the energy prediction
+				uint32_t energyharvestsum = GetDevice()->GetEnergyHarvestSum()
+						* 100000.0;
+				uint32_t energyconsumesum = GetDevice()->GetEnergyConsumeSum()
+						* 100000.0;
+				l3Header.SetEnergyHarvestSum(energyharvestsum);
+				l3Header.SetEnergyConsumeSum(energyconsumesum);
 				p->AddHeader(l3Header);
 				UpdateSentPacketId(id, nextId);
 				Ptr<NanoMacEntity> mac = GetDevice()->GetMac();
@@ -945,6 +1033,13 @@ void QRouting::SendPacketBuf() {
 				l3Header.SetDeflectRate(deflectrate);
 				l3Header.SetDropRate(droprate);
 				l3Header.SetEnergyRate(energyrate);
+				// for the energy prediction
+				uint32_t energyharvestsum = GetDevice()->GetEnergyHarvestSum()
+						* 100000.0;
+				uint32_t energyconsumesum = GetDevice()->GetEnergyConsumeSum()
+						* 100000.0;
+				l3Header.SetEnergyHarvestSum(energyharvestsum);
+				l3Header.SetEnergyConsumeSum(energyconsumesum);
 				NS_LOG_FUNCTION(this<<"forward new l3 header"<<l3Header);
 				p->AddHeader(l3Header);
 

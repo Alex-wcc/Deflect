@@ -104,7 +104,7 @@ void MessageProcessUnit::CreteMessage() {
 		}
 
 		//这里对interarrivaltime 进行随机处理。
-		m_interarrivalTime = (rand() % (1 - 3 + 1)) + 8
+		m_interarrivalTime = (rand() % (8 - 3 + 1)) + 3
 				+ ((rand() % (9 - 0 + 1)) + 0) / 10.0;
 
 		m_outTX((int) p->GetUid(), (int) GetDevice()->GetNode()->GetId(),

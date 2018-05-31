@@ -31,8 +31,10 @@ public:
 	virtual void DoDispose();
 
 public:
+	//05/30/2018 因为energy prediction 增加两个变量.  增加一个关于能量状态的变量
 	void AddRoute(uint32_t dstId, uint32_t nextId, uint32_t Qvalue,
-			uint32_t HopCount);
+			uint32_t HopCount, double energyharvestspeed,
+			double energyconsumespeed, double energyconsumerate);
 	uint32_t LookupRoute(uint32_t dstId);
 	uint32_t SearchRouteForQvalue(uint32_t dstId);
 	uint32_t SearchRouteForQHopCount(uint32_t dstId);
@@ -40,16 +42,22 @@ public:
 	uint32_t LookUpPreNode(uint32_t dstId);
 	bool SearchPreNode(uint32_t dstId, uint32_t nextId); //寻找对应的记录是否存在，以便于进行添加或者更新
 	uint32_t ChooseDeflectNode(uint32_t dstId, uint32_t routeNextId);
-
-	uint32_t UpdateQvalue(uint32_t dstId, double reward, uint32_t HopCount);
+	//05/31/2018 因为energy prediction 增加两个变量.  增加一个关于能量状态的变量
+	uint32_t UpdateQvalue(uint32_t dstId, double reward, uint32_t HopCount,
+			double energyharvestspeed, double energyconsumespeed,
+			double energyconsumerate);
 	void UpdateRoute(uint32_t dstId, uint32_t nextId, uint32_t Qvalue,
 			uint32_t HopCount);
 	//void AddPreNode();
 	//uint32_t LookupPreNode();the algorithm did not need to lookup some node, these will be finished at upper layer.
+	//05/30/2018 因为energy prediction 增加两个变量. 增加一个关于能量状态的变量
 	void AddPreNodeNew(uint32_t distId, uint32_t nextID, uint32_t Qvalue,
-			uint32_t HopCount);
+			uint32_t HopCount, double energyharvestspeed,
+			double energyconsumespeed, double energyconsumerate);
+	//05/30/2018 因为energy prediction 增加两个变量.  增加一个关于能量状态的变量
 	void UpdatePreNode(uint32_t dstId, uint32_t nextId, double reward,
-			uint32_t HopCount);
+			uint32_t HopCount, double energyharvestspeed,
+			double energyconsumespeed, double energyconsumerate);
 
 	void SetRouteUn(uint32_t nextId);
 	void SetRouteAv(uint32_t nextId);
@@ -64,6 +72,10 @@ public:
 		uint32_t HopCount;
 		double UpTime; //
 		bool RouteValid; //when a node is using this route, it will become false.
+		//for energy prediction
+		double energyharvestspeed;
+		double energyconsumespeed;
+		double energyconsumerate;
 	} QTableEntry;
 
 	typedef struct {
@@ -75,6 +87,10 @@ public:
 		uint32_t HopCount;
 		double UpTime;
 		bool PreNodeValid;
+		//for energy prediction
+		double energyharvestspeed;
+		double energyconsumespeed;
+		double energyconsumerate;
 	} PreNodeEntry;
 
 	std::vector<QTableEntry> m_qtable;
@@ -116,7 +132,12 @@ private:
 	std::list<std::pair<Ptr<Packet>, int>> m_tosendBuffer;
 	std::list<std::pair<uint32_t, uint32_t>> m_macFrom;
 
-	bool m_SendingTag;//正在发送的标记位
+	bool m_SendingTag; //正在发送的标记位
+
+	//能量限制；
+	/*double SendPacketRecACK;
+	double RecPacketForward;
+	double RecACK;*/
 
 	//outstream
 	//typedef void (*OutTxCallback)(int, int, int);

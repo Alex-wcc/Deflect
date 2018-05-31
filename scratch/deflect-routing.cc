@@ -89,7 +89,7 @@ void Run(int nbNanoNodes, double txRangeNanoNodes, int macType, int l3Type,
 	//layout details
 	double xrange = 0.05;
 	double yrange = 0.05; //为什么y轴也是0呢？但是画出来的话明明有xy值呀。
-    //double zrange = 0;
+	//double zrange = 0;
 	//double zrange = 0.001;
 
 	//physical details
@@ -250,7 +250,7 @@ void Run(int nbNanoNodes, double txRangeNanoNodes, int macType, int l3Type,
 		double energy = 5.0;
 		double maxenergy = 5.0;
 		double harEnergyInterval = 0.1;
-		int harEnergySpeed = 50;	//除以100
+		int harEnergySpeed = 50;	//除以100,除以2是平均速度。
 		//int reduceEnergy = 0;	//for random harvesting
 		double EnergySendPerByte = 8.0 / 2.0 * 100.0 * 4.0 / 1000000.0;
 		double EnergyReceivePerByte = 8.0 / 2.0 * 100.0 * 4.0 / 1000000.0 / 2.0;
@@ -270,13 +270,12 @@ void Run(int nbNanoNodes, double txRangeNanoNodes, int macType, int l3Type,
 		dev->SetHarvestEnergyInterTime(harEnergyInterval);
 		dev->SetHarEnergySpeed(harEnergySpeed);
 
-
 		dev->SetBufferSize(buffersize);
 
 	}
 
 	//application
-	double packetInterval = 3;
+	double packetInterval = 3;	//这个要查看message-process-unit中的具体的数值才行，这里这个是不准确的。
 
 	for (int i = 0; i < nbNanoNodes; i++) {
 
@@ -297,7 +296,7 @@ void Run(int nbNanoNodes, double txRangeNanoNodes, int macType, int l3Type,
 		Simulator::Schedule(Seconds(startTime),
 				&MessageProcessUnit::CreteMessage, mpu);
 
-        // let the node start harvest energy
+		// let the node start harvest energy
 		Ptr<SimpleNanoDevice> dev =
 				d_nodes.Get(i)->GetObject<SimpleNanoDevice>();
 		//可以执行，从一个随机时间开始收集能量
