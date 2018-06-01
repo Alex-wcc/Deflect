@@ -555,9 +555,13 @@ void QRouting::ReceivePacket(Ptr<Packet> p) {
 	if (macto == GetDevice()->GetNode()->GetId()) {
 		NS_LOG_FUNCTION(this<<"is for me");
 		//GetDevice()->GetMessageProcessUnit()->ProcessMessage(p);
+		//根据收到的数据包进行更新路由表和偏转表的操作。
+		//去掉MAC头部之后，数据包的大小为166，其中129是数据部分，37为头部，这个头部跟论文中的大小不一样，论文中的还要小一些，因为reward就4个字节，这里包括了很多的内容。
+		//一个可更新的ACK为50+37，87
+		//一个不更新路由表和偏转表的ACK为10+37. 47
 
-		if (p->GetSize() < 102)	//因为一个正常的包的大小是102bytes，所以小于这个大小的时候就是ACK,为什么取102呢？其实是瞎选的，但是保证packet的个数一定大于这个，ACK的大小一定小于这个。
-				{
+		if (p->GetSize() < 70) {
+			//最简单的ACK，收到之后消耗能量，对ACKcount+1操作，对路由表复原。
 			if (GetDevice()->m_energy
 					< GetDevice()->m_EnergyReceivePerByte
 							* GetDevice()->m_ACKSize) {
@@ -574,7 +578,91 @@ void QRouting::ReceivePacket(Ptr<Packet> p) {
 				//NS_LOG_FUNCTION(this<<'receive the ack'<<p<<'size'<<p->GetSize());
 				SetRouteAv(macfrom);
 			}
-		} else {
+		}
+
+		if (p->GetSize() > 70 && p->GetSize() < 102)//因为一个正常的包的大小是102bytes，所以小于这个大小的时候就是ACK,为什么取102呢？其实是瞎选的，但是保证packet的个数一定大于这个，ACK的大小一定小于这个。
+				{
+			/*//最简单的ACK，收到之后消耗能量，对ACKcount+1操作，对路由表复原。
+			if (GetDevice()->m_energy
+					< GetDevice()->m_EnergyReceivePerByte
+							* GetDevice()->m_ACKSize) {
+				int energy = GetDevice()->m_energy;
+				energy = energy + 1;
+			} else {
+				//接收的ACK进行+1的操作
+				GetDevice()->m_ReceiveACKCount = GetDevice()->m_ReceiveACKCount
+						+ 1;
+				m_tosendBuffer.remove(m_tosendBuffer.front());
+				//consume energy
+				//GetDevice()->ConsumeEnergyRecACK();
+				GetDevice()->ConsumeEnergyReceive(GetDevice()->m_ACKSize);
+				//NS_LOG_FUNCTION(this<<'receive the ack'<<p<<'size'<<p->GetSize());
+				SetRouteAv(macfrom);
+			}*/
+
+			//feedback的ACK，进行更新操作。
+			if (GetDevice()->m_energy
+					< GetDevice()->m_EnergyReceivePerByte
+							* GetDevice()->m_ACKSize) {
+				int energy = GetDevice()->m_energy;
+				energy = energy + 1;
+			} else {
+				//接收的ACK进行+1的操作
+				GetDevice()->m_ReceiveACKCount = GetDevice()->m_ReceiveACKCount
+						+ 1;
+				m_tosendBuffer.remove(m_tosendBuffer.front());
+				//consume energy
+				//GetDevice()->ConsumeEnergyRecACK();
+				GetDevice()->ConsumeEnergyReceive(GetDevice()->m_ACKSize);
+				//NS_LOG_FUNCTION(this<<'receive the ack'<<p<<'size'<<p->GetSize());
+				SetRouteAv(macfrom);
+
+				//进行feedback的更新操作。
+				NanoL3Header l3Header;
+				p->RemoveHeader(l3Header);
+
+				uint32_t from = l3Header.GetSource();			//返回feedback的节点
+				uint32_t to = l3Header.GetDestination();				//目的节点。
+				//uint32_t previous = l3Header.GetPrevious();
+				uint32_t qvalue = l3Header.GetQvalue();
+				uint32_t hopcount = l3Header.GetHopCount();
+				uint32_t qhopcount = l3Header.GetQHopCount();
+
+				double deflectrate = l3Header.GetDeflectRate();
+				double droprate = l3Header.GetDropRate();
+				double energyrate = l3Header.GetEnergyRate();
+
+				//for energy prediction
+				double energyharvestspeed = l3Header.GetEnergyHarvestSum()
+						/ 100000.0 / Simulator::Now().GetSeconds();
+				double energyconsumespeed = l3Header.GetEnergyConsumeSum()
+						/ 100000.0 / Simulator::Now().GetSeconds();
+				//uint32_t thisid = GetDevice()->GetNode()->GetId();
+				bool DeflectNodeE = SearchPreNode(to, from);		//判断偏转表是否存在。
+				if (!DeflectNodeE) {
+					//add deflection table
+					AddPreNodeNew(to, from, qvalue, hopcount,
+							energyharvestspeed, energyconsumespeed, energyrate);
+					//search the routing table
+					uint32_t route = LookupRoute(to);
+					if (route == 991) {
+						AddRoute(to, from, qvalue, hopcount, energyharvestspeed,
+								energyconsumespeed, energyrate);
+					}
+				} else {
+					double Reward = qvalue * (qhopcount + 1) * (1 + deflectrate)
+							* (1 + droprate) * (1 + energyrate) / 1000000;
+					UpdatePreNode(to, from, Reward, qhopcount,
+							energyharvestspeed, energyconsumespeed, energyrate);
+					uint32_t newQvalue = UpdateQvalue(to, from, qhopcount,
+							energyharvestspeed, energyconsumespeed, energyrate);
+					if (newQvalue != 996) {
+						UpdateRoute(to, from, newQvalue, qhopcount);
+					}
+				}
+			}
+		}
+		if(p->GetSize() > 102) {
 			if (GetDevice()->m_energy
 					<= GetDevice()->m_EnergySendPerByte
 							* GetDevice()->m_PacketSize
@@ -626,12 +714,8 @@ void QRouting::ReceivePacket(Ptr<Packet> p) {
 				//for energy prediction
 				double energyharvestspeed = l3Header.GetEnergyHarvestSum()
 						/ 100000.0 / Simulator::Now().GetSeconds();
-				//energyharvestsum = energyharvestsum + 1;
 				double energyconsumespeed = l3Header.GetEnergyConsumeSum()
 						/ 100000.0 / Simulator::Now().GetSeconds();
-				//energyconsumesum = energyconsumesum + 1;
-				double time = Simulator::Now().GetSeconds();
-				time = time + 1;
 				uint32_t thisid = GetDevice()->GetNode()->GetId();
 				//下面这个函数打印节点的状态，在收到一个数据包后进行打印
 				GetDevice()->GetMessageProcessUnit()->PrintNodestatus();
