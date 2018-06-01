@@ -63,6 +63,9 @@ public:
 	void SetRouteAv(uint32_t nextId);
 	//send the ack packet
 	void SendACKPacket(uint32_t fromId);
+	void SendACKFeedback(uint32_t destination, uint32_t macfrom, uint32_t qvalue, uint32_t hopcount,
+			uint32_t nextid, uint32_t deflectrate, uint32_t droprate,
+			uint32_t energyrate);
 
 	typedef struct {
 		uint32_t dstId;
@@ -136,14 +139,12 @@ private:
 
 	//能量限制；
 	/*double SendPacketRecACK;
-	double RecPacketForward;
-	double RecACK;*/
+	 double RecPacketForward;
+	 double RecACK;*/
 
 	//outstream
 	//typedef void (*OutTxCallback)(int, int, int);
-
 	//TracedCallback<int, int, int> m_SendTx;
-
 };
 }
 

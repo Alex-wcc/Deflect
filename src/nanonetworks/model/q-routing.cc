@@ -73,15 +73,15 @@ QRouting::QRouting() {
 	m_SendingTag = false;	//正在发送的标记位，初始化位false
 
 	/*//能量限制，每次要发送或者接受都需要判断一下能量是否足够等。
-	SendPacketRecACK = GetDevice()->m_EnergySendPerByte
-			* GetDevice()->m_PacketSize
-			+ GetDevice()->m_EnergyReceivePerByte * GetDevice()->m_ACKSize;
-	RecACK = GetDevice()->m_EnergyReceivePerByte * GetDevice()->m_ACKSize;
-	RecPacketForward = GetDevice()->m_EnergySendPerByte
-			* GetDevice()->m_PacketSize
-			+ GetDevice()->m_EnergyReceivePerByte * GetDevice()->m_ACKSize
-			+ GetDevice()->m_EnergySendPerByte * GetDevice()->m_ACKSize
-			+ GetDevice()->m_EnergySendPerByte * GetDevice()->m_PacketSize;*/
+	 SendPacketRecACK = GetDevice()->m_EnergySendPerByte
+	 * GetDevice()->m_PacketSize
+	 + GetDevice()->m_EnergyReceivePerByte * GetDevice()->m_ACKSize;
+	 RecACK = GetDevice()->m_EnergyReceivePerByte * GetDevice()->m_ACKSize;
+	 RecPacketForward = GetDevice()->m_EnergySendPerByte
+	 * GetDevice()->m_PacketSize
+	 + GetDevice()->m_EnergyReceivePerByte * GetDevice()->m_ACKSize
+	 + GetDevice()->m_EnergySendPerByte * GetDevice()->m_ACKSize
+	 + GetDevice()->m_EnergySendPerByte * GetDevice()->m_PacketSize;*/
 }
 
 QRouting::~QRouting() {
@@ -556,7 +556,7 @@ void QRouting::ReceivePacket(Ptr<Packet> p) {
 		NS_LOG_FUNCTION(this<<"is for me");
 		//GetDevice()->GetMessageProcessUnit()->ProcessMessage(p);
 
-		if (p->GetSize() < 102)	//因为一个正常的包的大小是102bytes，所以小于这个大小的时候就是ACK
+		if (p->GetSize() < 102)	//因为一个正常的包的大小是102bytes，所以小于这个大小的时候就是ACK,为什么取102呢？其实是瞎选的，但是保证packet的个数一定大于这个，ACK的大小一定小于这个。
 				{
 			if (GetDevice()->m_energy
 					< GetDevice()->m_EnergyReceivePerByte
@@ -603,7 +603,7 @@ void QRouting::ReceivePacket(Ptr<Packet> p) {
 					&& m_tosendBuffer.size() < GetDevice()->m_bufferSize) {
 				//GetDevice()->ConsumeEnergyRecPacket();
 				GetDevice()->ConsumeEnergyReceive(GetDevice()->m_PacketSize);
-				SendACKPacket(macfrom);
+
 				//GetDevice()->ConsumeEnergySendACK();
 				GetDevice()->ConsumeEnergySend(GetDevice()->m_ACKSize);
 
@@ -685,6 +685,8 @@ void QRouting::ReceivePacket(Ptr<Packet> p) {
 					}
 				}
 				if (to == GetDevice()->GetNode()->GetId()) {
+					//如果节点是自己本身，那么只要返回简单的ACK就可以了。
+					SendACKPacket(macfrom);	//这个ACK的内容没有办法更新的。
 					NS_LOG_FUNCTION(this<<"i am the destination");
 					p->AddHeader(l3Header);
 					GetDevice()->GetMessageProcessUnit()->ProcessMessage(p);
@@ -703,7 +705,7 @@ void QRouting::SendACKPacket(uint32_t fromId) {
 
 //build an ACK packet
 	int m_ackSize;
-	uint8_t *buffer = new uint8_t[m_ackSize = 10];//头部差不多有48个字节，ip头部32个字节，mac头部8个字节，seq头部8个字节
+	uint8_t *buffer = new uint8_t[m_ackSize = 10];//小于70的是普通ack，小于102的是feedback的ack。头部差不多有48个字节，ip头部32个字节，mac头部8个字节，seq头部8个字节
 	for (int i = 0; i < m_ackSize; i++) {
 		buffer[i] = 10;
 	}
@@ -711,7 +713,7 @@ void QRouting::SendACKPacket(uint32_t fromId) {
 	NanoSeqTsHeader seqTs;
 	seqTs.SetSeq(1);//here getuid is to get the globalUid, a gloabl parameter
 
-//增加network header
+	//增加network header
 	NanoL3Header header;
 	uint32_t src = GetDevice()->GetNode()->GetId();
 	uint32_t id = seqTs.GetSeq();
@@ -723,6 +725,8 @@ void QRouting::SendACKPacket(uint32_t fromId) {
 	header.SetDestination(fromId);
 	header.SetTtl(ttl);
 	header.SetPacketId(id);
+	//下面的数据是有用的，在feedback的ack中是用来feedback的更新。
+
 	header.SetQvalue(qvalue);
 	header.SetHopCount(hopcount);
 	header.SetPrevious(src);
@@ -730,15 +734,62 @@ void QRouting::SendACKPacket(uint32_t fromId) {
 	header.SetDeflectRate(0);
 	header.SetDropRate(0);
 	header.SetEnergyRate(0);
+	//上面的准确来说是用来更新q、Route、deflect table的。
 // for the energy prediction
-	uint32_t energyharvestsum = GetDevice()->GetEnergyHarvestSum() * 100000.0;
-	uint32_t energyconsumesum = GetDevice()->GetEnergyConsumeSum() * 100000.0;
+	uint32_t energyharvestsum = GetDevice()->m_energyHarvestSum * 100000.0;
+	uint32_t energyconsumesum = GetDevice()->m_energyConsumeSum * 100000.0;
 	header.SetEnergyHarvestSum(energyharvestsum);
 	header.SetEnergyConsumeSum(energyconsumesum);
 	ack->AddHeader(seqTs);
 	ack->AddHeader(header);
 	Ptr<NanoMacEntity> mac = GetDevice()->GetMac();
 	mac->Send(ack, fromId);
+}
+
+//feedback的
+void QRouting::SendACKFeedback(uint32_t destination, uint32_t macfrom,
+		uint32_t qvalue, uint32_t hopcount, uint32_t nextid,
+		uint32_t deflectrate, uint32_t droprate, uint32_t energyrate) {
+	//build the ack feedback packet
+	int m_acksize;
+	uint8_t *buffer = new uint8_t[m_acksize = 50];//小于70的是普通ack，小于102的是feedback的ack。这里要注意跟普通ACK的区别，具体的区分，可以通过packet的大小计算一共是多少。
+	for (int i = 0; i < m_acksize; i++) {
+		buffer[i] = 50;
+	}
+	Ptr<Packet> ack = Create<Packet>(buffer, m_acksize);
+	NanoSeqTsHeader seqTs;
+	seqTs.SetSeq(1);	//这个我也忘记了，回头好好思考一下，现在就按照原来的写吧。06/01/2018
+	//here getuid is to get the globaluid, a global parameter
+
+	//增加network header，用于ack的包头。
+	NanoL3Header header;
+	uint32_t src = GetDevice()->GetNode()->GetId();
+	uint32_t id = seqTs.GetSeq();
+	uint32_t ttl = 0;
+
+	header.SetSource(src);
+	header.SetDestination(macfrom);
+	header.SetTtl(ttl);
+	header.SetPacketId(id);
+
+	//下面的数据是有用的，用来feedback的更新。
+	//准确来说是用来更新q、Route、deflect table的。
+	header.SetQvalue(qvalue);
+	header.SetHopCount(hopcount);	//这个是包真的跳过的跳数。
+	header.SetPrevious(nextid);
+	header.SetQHopCount(hopcount);//这里在feedforward中其实是路由表或者偏转表上查到的，但是不是包真的经过的跳数。
+	header.SetDeflectRate(deflectrate);
+	header.SetDropRate(droprate);
+	header.SetEnergyRate(energyrate);
+	// for the energy prediction
+	uint32_t energyharvestsum = GetDevice()->m_energyHarvestSum * 100000.0;
+	uint32_t energyconsumesum = GetDevice()->m_energyConsumeSum * 100000.0;
+	header.SetEnergyHarvestSum(energyharvestsum);
+	header.SetEnergyConsumeSum(energyconsumesum);
+	ack->AddHeader(seqTs);
+	ack->AddHeader(header);
+	Ptr<NanoMacEntity> mac = GetDevice()->GetMac();
+	mac->Send(ack, macfrom);
 }
 
 void QRouting::ForwardPacket(Ptr<Packet> p) {
@@ -811,10 +862,10 @@ void QRouting::SendPacketBuf() {
 			int j = 0;
 			j = j + 1;
 			//deflect的数据包进行+1操作
-			GetDevice()->m_DeflectedCount = GetDevice()->m_DeflectedCount + 1;
+			//在buffersize=1的情况下，根本一直没有加；所以要改一下位置。
+
 		}
 		m_tosendBuffer.front().second = RepeatCount - 1;
-		//查询相应的macfrom的地址。
 
 		NanoL3Header l3Header;
 		p->RemoveHeader(l3Header);
@@ -825,6 +876,9 @@ void QRouting::SendPacketBuf() {
 		uint32_t hopcount = l3Header.GetHopCount();
 		uint32_t headerQvalue = l3Header.GetQvalue();
 		uint32_t qhopcount = l3Header.GetQHopCount();
+
+		//查询相应的macfrom的地址。这样nodes就能知道将ACK发送给谁。
+		uint32_t macfrom = SearchMacFrom(id);
 
 		//for send the packet in the buffer
 		if (hopcount == 1) {
@@ -874,9 +928,22 @@ void QRouting::SendPacketBuf() {
 					nextId = LookupRoute(to);
 					NS_LOG_FUNCTION(
 							this<<"There is a route" << "nextId" << nextId);
+					//在发出去之前发送可以更新路由表的ack到上一个节点？
+					uint32_t qvalue = SearchRouteForQvalue(to);
+					SendACKFeedback(to, macfrom, qvalue, hopcount, nextId,
+							deflectrate, droprate, energyrate);
+
 				} else if (routenextId != 991 && !routeava
 						&& deflectId != 995) {
 					nextId = deflectId;
+					//在发出去之前发送可以更新路由表的ack到上一个节点？
+					uint32_t qvalue = SearchRouteForQvalue(to);
+					SendACKFeedback(to, macfrom, qvalue, hopcount, nextId,
+							deflectrate, droprate, energyrate);
+
+					//既然nextId选择了deflect的形式，那么+1是很合理的。
+					GetDevice()->m_DeflectedCount =
+							GetDevice()->m_DeflectedCount + 1;
 					NS_LOG_FUNCTION(
 							this<<"The packet is deflected"<<"nextId"<<nextId);
 				} else {		//没有可用的端口,随机发送一个到别的端口
@@ -889,6 +956,8 @@ void QRouting::SendPacketBuf() {
 						srand(time(NULL));		//这个随机数？？？？
 						int i = rand() % neighbors.size();
 						nextId = neighbors[i].first;
+						//如果是随机选择的节点，那么发回的ack不能用于更新路由表,只要发个ACK回去就行了。
+						SendACKPacket(macfrom);
 					}
 					NS_LOG_FUNCTION(
 							this<<"random choose a neighbor" << "nextId" << nextId);
@@ -897,9 +966,9 @@ void QRouting::SendPacketBuf() {
 				l3Header.SetDropRate(droprate);
 				l3Header.SetEnergyRate(energyrate);
 				// for the energy prediction
-				uint32_t energyharvestsum = GetDevice()->GetEnergyHarvestSum()
+				uint32_t energyharvestsum = GetDevice()->m_energyHarvestSum
 						* 100000.0;
-				uint32_t energyconsumesum = GetDevice()->GetEnergyConsumeSum()
+				uint32_t energyconsumesum = GetDevice()->m_energyConsumeSum
 						* 100000.0;
 				l3Header.SetEnergyHarvestSum(energyharvestsum);
 				l3Header.SetEnergyConsumeSum(energyconsumesum);
@@ -924,6 +993,7 @@ void QRouting::SendPacketBuf() {
 							* GetDevice()->m_PacketSize
 							+ GetDevice()->m_EnergyReceivePerByte
 									* GetDevice()->m_ACKSize) {
+				//下面四行代码是没用的，就是看看中间值
 				int energy = GetDevice()->m_energy;
 				energy = energy + 1;
 				int queue = m_tosendBuffer.size();
@@ -938,6 +1008,7 @@ void QRouting::SendPacketBuf() {
 							+ GetDevice()->m_EnergyReceivePerByte
 									* GetDevice()->m_ACKSize) {
 				uint32_t macfrom = SearchMacFrom(id);
+				//下面的代码也是没用的，就是看看中间值
 				if (macfrom != 9999) {
 					int i = 1;
 					i = i + 1;
@@ -947,6 +1018,11 @@ void QRouting::SendPacketBuf() {
 				double SendCount = GetDevice()->m_SendCount;
 				double DeflectCount = GetDevice()->m_DeflectedCount;
 				double ReceiveACKCount = GetDevice()->m_ReceiveACKCount;
+				//下面这个是没有用的，就是看一下中间值。
+				if (DeflectCount != 0) {
+					int i = 0;
+					i = i + 1;
+				}
 				double EnergyLeft = GetDevice()->m_energy;
 				double EnergyMax = GetDevice()->m_maxenergy;
 				GetDevice()->m_SendCount = SendCount + 1;
@@ -962,8 +1038,8 @@ void QRouting::SendPacketBuf() {
 
 				uint32_t routenextId = LookupRoute(to);
 				uint32_t deflectedId = 995;
-				bool PalreadySent;
-				bool TalreadySent;
+				bool PalreadySent;				//判断是否已经偏转过这个节点了。
+				bool TalreadySent;				//判断是否已经发送过这个节点了。
 				if (routenextId != 991) {
 					TalreadySent = CheckAmongSentPacket(id, routenextId);
 				}
@@ -977,6 +1053,11 @@ void QRouting::SendPacketBuf() {
 
 				if (routenextId != 991 && routeava && !TalreadySent) {
 					nextId = routenextId;
+					//如果是根据路由表选择出来的下一跳，那么就需要进行feedback的更新
+					uint32_t qvalue = SearchRouteForQvalue(to);
+					SendACKFeedback(to, macfrom, qvalue, hopcount, nextId,
+							deflectrate, droprate, energyrate);
+
 					NS_LOG_FUNCTION(
 							this<<"Forward there is route"<<"nextId"<<nextId);
 					// 获得 from ，previous 对应的qvalue 和hopcount；
@@ -985,6 +1066,14 @@ void QRouting::SendPacketBuf() {
 				} else if (routenextId != 991 && !routeava && deflectedId != 995
 						&& !PalreadySent) {
 					nextId = deflectedId;
+					//如果是从偏转表中选择出来的下一跳，那么就需要进行feedback的更新。
+					uint32_t qvalue = SearchRouteForQvalue(to);
+					SendACKFeedback(to, macfrom, qvalue, hopcount, nextId,
+							deflectrate, droprate, energyrate);
+
+					//既然nextId选择了deflect的形式，那么+1是很合理的。
+					GetDevice()->m_DeflectedCount =
+							GetDevice()->m_DeflectedCount + 1;
 					NS_LOG_FUNCTION(
 							this<<"Forward the packet is deflected"<<"nextId"<<nextId);
 					// 获得 from ，previous 对应的qvalue 和hopcount；
@@ -1013,16 +1102,25 @@ void QRouting::SendPacketBuf() {
 							int i = rand() % newNeighbors.size();
 							nextId = neighbors[i].first;
 						}
+						//如果是通过随机方法选择的下一跳，那么只需要简单ACK返回就可以了。
+						SendACKPacket(macfrom);
+
 					} else if (newNeighbors.size() == 1
 							&& newNeighbors.at(0).first != macfrom) {
 						NS_LOG_FUNCTION(
 								this << "select the only available neighbors");
 						nextId = newNeighbors.at(0).first;
+						//如果是通过随机方法选择的下一跳，那么只需要简单ACK返回就可以了。
+						SendACKPacket(macfrom);
+
 					} else if (newNeighbors.size() == 1
 							&& newNeighbors.at(0).first == macfrom) {
 						NS_LOG_FUNCTION(
 								this << "select the only available neighbors");
 						nextId = newNeighbors.at(0).first;
+						//如果是通过随机方法选择的下一跳，那么只需要简单ACK返回就可以了。
+						SendACKPacket(macfrom);
+
 					}
 					NS_LOG_FUNCTION(
 							this<<"random choose a neighbor"<<"nextId"<<nextId);
@@ -1034,9 +1132,9 @@ void QRouting::SendPacketBuf() {
 				l3Header.SetDropRate(droprate);
 				l3Header.SetEnergyRate(energyrate);
 				// for the energy prediction
-				uint32_t energyharvestsum = GetDevice()->GetEnergyHarvestSum()
+				uint32_t energyharvestsum = GetDevice()->m_energyHarvestSum
 						* 100000.0;
-				uint32_t energyconsumesum = GetDevice()->GetEnergyConsumeSum()
+				uint32_t energyconsumesum = GetDevice()->m_energyConsumeSum
 						* 100000.0;
 				l3Header.SetEnergyHarvestSum(energyharvestsum);
 				l3Header.SetEnergyConsumeSum(energyconsumesum);
@@ -1049,6 +1147,8 @@ void QRouting::SendPacketBuf() {
 					int k = 0;
 					k = k + 1;
 				}
+				//在发出去之前发送可以更新路由表的ack到上一个节点？
+
 				//这里将路由表置位
 				SetRouteUn(nextId);
 				mac->Send(p, nextId);

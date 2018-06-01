@@ -343,7 +343,7 @@ void SimpleNanoDevice::SetNACKSize(double nacksize) {
 }
 
 //for energy prediciton
-double SimpleNanoDevice::GetEnergyHarvestSum() const {
+/*double SimpleNanoDevice::GetEnergyHarvestSum() const {
 	NS_LOG_FUNCTION(this);
 	return m_energyHarvestSum;
 }
@@ -351,7 +351,7 @@ double SimpleNanoDevice::GetEnergyHarvestSum() const {
 double SimpleNanoDevice::GetEnergyConsumeSum() const {
 	NS_LOG_FUNCTION(this);
 	return m_energyConsumeSum;
-}
+}*/
 
 //for buffer size of the nanonode
 

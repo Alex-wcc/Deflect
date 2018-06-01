@@ -139,9 +139,9 @@ public:
 	void SetACKSize(double acksize);
 	void SetNACKSize(double nacksize);
 
-	//for energy prediction
+	/*//for energy prediction
 	double GetEnergyHarvestSum() const;
-	double GetEnergyConsumeSum() const;
+	double GetEnergyConsumeSum() const;*/
 
 	void SetBufferSize(uint32_t buffersize);
 
