@@ -136,13 +136,24 @@ void QRouting::AddPreNodeNew(uint32_t dstId, uint32_t nextId, uint32_t Qvalue,
 	m_prenode.push_back(PreNode);
 }
 //route look up
+//这个只是用来查询存在与否的。因为还要用于更新，添加路由表等情况。
 uint32_t QRouting::LookupRoute(uint32_t dstId) {
 	std::vector<QTableEntry>::iterator it = m_qtable.begin();
 
 	uint16_t i = 0; //count number
+	//prediction, 超过最小能量才进行发送。
+	/*double energy_min_send = GetDevice()->m_EnergySendPerByte
+			* GetDevice()->m_PacketSize
+			+ GetDevice()->m_EnergyReceivePerByte * GetDevice()->m_ACKSize;*/
 	for (; it != m_qtable.end(); ++it) {
-		if (it->dstId == dstId
-				&& it->dstId != 999/*&& it->RouteValid == true*/) {
+
+		/*double energystatus = (1 - it->energyconsumerate / 100)
+				* GetDevice()->m_maxenergy
+				+ (it->energyharvestspeed - it->energyconsumespeed)
+						* (Simulator::Now().GetSeconds() - it->UpTime);*/
+		if (it->dstId == dstId && it->dstId != 999
+				/*&& energystatus
+						>= energy_min_send*//*&& it->RouteValid == true*/) {
 			break;
 		}
 		i++;
@@ -154,6 +165,7 @@ uint32_t QRouting::LookupRoute(uint32_t dstId) {
 		return 991; //不存在路由
 	}
 }
+
 void QRouting::SetRouteUn(uint32_t nextId) {
 	std::vector<QTableEntry>::iterator it = m_qtable.begin();
 
@@ -176,6 +188,9 @@ void QRouting::SetRouteUn(uint32_t nextId) {
 		j++;
 	}
 	//0.1秒后，进行重置，但是这里的 秒需要根据能量捕获速率来进行调整。
+	//这里似乎很重要，我本来想尝试收到ack或者packet之后再进行置available，
+	//但是性能反而变差了，因为节点不得不deflect包，或者随机寻找。这种情况增加导致节点需要花更多的时间和能量去寻找最终节点。
+	//所以这里的时间还是很重要的。！！！
 	Simulator::Schedule(Seconds(3), &QRouting::SetRouteAv, this, nextId);
 }
 void QRouting::SetRouteAv(uint32_t nextId) {
@@ -293,7 +308,7 @@ uint32_t QRouting::ChooseDeflectNode(uint32_t dstId, uint32_t routeNextId) {
 		if (it->dstId == dstId && it->nodeId != routeNextId
 				&& it->PreNodeValid == true) {
 
-			energystatus_pre_c = (1 - it->energyconsumerate)
+			energystatus_pre_c = (1 - it->energyconsumerate / 100)
 					* GetDevice()->m_maxenergy
 					+ (it->energyharvestspeed - it->energyconsumespeed)
 							* (Simulator::Now().GetSeconds() - it->UpTime);
@@ -307,43 +322,43 @@ uint32_t QRouting::ChooseDeflectNode(uint32_t dstId, uint32_t routeNextId) {
 	}
 	cPreNode = m_prenode[j];
 
-	//迭代寻找最有的节点。
-	double energyconsumerate_pre_it;
-	double energyconsumerate_pre_c = (cPreNode.energyconsumerate
-			* GetDevice()->m_maxenergy
-			+ (cPreNode.energyharvestspeed - cPreNode.energyconsumespeed)
-					* (Simulator::Now().GetSeconds() - cPreNode.UpTime))
-			/ GetDevice()->m_maxenergy;
-	for (int i = 0; it != m_prenode.end(); ++it) {
-		if (it->dstId == dstId && it->nodeId != routeNextId
-				&& it->PreNodeValid == true) {
-
-			energyconsumerate_pre_it = (it->energyconsumerate
-					* GetDevice()->m_maxenergy
-					+ (it->energyharvestspeed - it->energyconsumespeed)
-							* (Simulator::Now().GetSeconds() - it->UpTime))
-					/ GetDevice()->m_maxenergy;
-
-			if ((it->Qvalue + (deltaT - it->UpTime) * it->RecRate)
-					* energyconsumerate_pre_it
-					< (cPreNode.Qvalue
-							+ (deltaT - cPreNode.UpTime) * cPreNode.RecRate)
-							* energyconsumerate_pre_c) { // 寻找最小值
-				j = i;
-				cPreNode = m_prenode[j];
-				energyconsumerate_pre_c = (cPreNode.energyconsumerate
-						* GetDevice()->m_maxenergy
-						+ (cPreNode.energyharvestspeed
-								- cPreNode.energyconsumespeed)
-								* (Simulator::Now().GetSeconds()
-										- cPreNode.UpTime))
-						/ GetDevice()->m_maxenergy;
-			}
-		}
-		i++;
-	}
-
 	if (i < m_prenode.size()) {
+
+		//迭代寻找最有的节点。
+		double energyconsumerate_pre_it;
+		double energyconsumerate_pre_c = (cPreNode.energyconsumerate
+				* GetDevice()->m_maxenergy
+				+ (cPreNode.energyharvestspeed - cPreNode.energyconsumespeed)
+						* (Simulator::Now().GetSeconds() - cPreNode.UpTime))
+				/ GetDevice()->m_maxenergy;
+		for (int i = 0; it != m_prenode.end(); ++it) {
+			if (it->dstId == dstId && it->nodeId != routeNextId
+					&& it->PreNodeValid == true) {
+
+				energyconsumerate_pre_it = (it->energyconsumerate
+						* GetDevice()->m_maxenergy
+						+ (it->energyharvestspeed - it->energyconsumespeed)
+								* (Simulator::Now().GetSeconds() - it->UpTime))
+						/ GetDevice()->m_maxenergy;
+
+				if ((it->Qvalue + (deltaT - it->UpTime) * it->RecRate)
+						* energyconsumerate_pre_it
+						< (cPreNode.Qvalue
+								+ (deltaT - cPreNode.UpTime) * cPreNode.RecRate)
+								* energyconsumerate_pre_c) { // 寻找最小值
+					j = i;
+					cPreNode = m_prenode[j];
+					energyconsumerate_pre_c = (cPreNode.energyconsumerate
+							* GetDevice()->m_maxenergy
+							+ (cPreNode.energyharvestspeed
+									- cPreNode.energyconsumespeed)
+									* (Simulator::Now().GetSeconds()
+											- cPreNode.UpTime))
+							/ GetDevice()->m_maxenergy;
+				}
+			}
+			i++;
+		}
 		return cPreNode.nodeId;
 	} else {
 		return 995;	//不存在deflectnode
@@ -576,6 +591,7 @@ void QRouting::ReceivePacket(Ptr<Packet> p) {
 				//GetDevice()->ConsumeEnergyRecACK();
 				GetDevice()->ConsumeEnergyReceive(GetDevice()->m_ACKSize);
 				//NS_LOG_FUNCTION(this<<'receive the ack'<<p<<'size'<<p->GetSize());
+				//接收到相应的数据包，将相应的端口置为可用。
 				SetRouteAv(macfrom);
 			}
 		}
@@ -583,22 +599,22 @@ void QRouting::ReceivePacket(Ptr<Packet> p) {
 		if (p->GetSize() > 70 && p->GetSize() < 102)//因为一个正常的包的大小是102bytes，所以小于这个大小的时候就是ACK,为什么取102呢？其实是瞎选的，但是保证packet的个数一定大于这个，ACK的大小一定小于这个。
 				{
 			/*//最简单的ACK，收到之后消耗能量，对ACKcount+1操作，对路由表复原。
-			if (GetDevice()->m_energy
-					< GetDevice()->m_EnergyReceivePerByte
-							* GetDevice()->m_ACKSize) {
-				int energy = GetDevice()->m_energy;
-				energy = energy + 1;
-			} else {
-				//接收的ACK进行+1的操作
-				GetDevice()->m_ReceiveACKCount = GetDevice()->m_ReceiveACKCount
-						+ 1;
-				m_tosendBuffer.remove(m_tosendBuffer.front());
-				//consume energy
-				//GetDevice()->ConsumeEnergyRecACK();
-				GetDevice()->ConsumeEnergyReceive(GetDevice()->m_ACKSize);
-				//NS_LOG_FUNCTION(this<<'receive the ack'<<p<<'size'<<p->GetSize());
-				SetRouteAv(macfrom);
-			}*/
+			 if (GetDevice()->m_energy
+			 < GetDevice()->m_EnergyReceivePerByte
+			 * GetDevice()->m_ACKSize) {
+			 int energy = GetDevice()->m_energy;
+			 energy = energy + 1;
+			 } else {
+			 //接收的ACK进行+1的操作
+			 GetDevice()->m_ReceiveACKCount = GetDevice()->m_ReceiveACKCount
+			 + 1;
+			 m_tosendBuffer.remove(m_tosendBuffer.front());
+			 //consume energy
+			 //GetDevice()->ConsumeEnergyRecACK();
+			 GetDevice()->ConsumeEnergyReceive(GetDevice()->m_ACKSize);
+			 //NS_LOG_FUNCTION(this<<'receive the ack'<<p<<'size'<<p->GetSize());
+			 SetRouteAv(macfrom);
+			 }*/
 
 			//feedback的ACK，进行更新操作。
 			if (GetDevice()->m_energy
@@ -615,6 +631,7 @@ void QRouting::ReceivePacket(Ptr<Packet> p) {
 				//GetDevice()->ConsumeEnergyRecACK();
 				GetDevice()->ConsumeEnergyReceive(GetDevice()->m_ACKSize);
 				//NS_LOG_FUNCTION(this<<'receive the ack'<<p<<'size'<<p->GetSize());
+				//接收到相应的数据包，将相应的端口置为可用。
 				SetRouteAv(macfrom);
 
 				//进行feedback的更新操作。
@@ -662,7 +679,7 @@ void QRouting::ReceivePacket(Ptr<Packet> p) {
 				}
 			}
 		}
-		if(p->GetSize() > 102) {
+		if (p->GetSize() > 102) {
 			if (GetDevice()->m_energy
 					<= GetDevice()->m_EnergySendPerByte
 							* GetDevice()->m_PacketSize
@@ -695,6 +712,8 @@ void QRouting::ReceivePacket(Ptr<Packet> p) {
 				//GetDevice()->ConsumeEnergySendACK();
 				GetDevice()->ConsumeEnergySend(GetDevice()->m_ACKSize);
 
+				//接收到相应的数据包，将相应的端口置为可用。
+				SetRouteAv(macfrom);
 				//接收的数据包进行+1操作
 				GetDevice()->m_ReceiveCount = GetDevice()->m_ReceiveCount + 1;
 				NanoL3Header l3Header;
