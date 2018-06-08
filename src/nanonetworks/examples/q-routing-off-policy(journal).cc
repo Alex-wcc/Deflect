@@ -1203,13 +1203,24 @@ void QRouting::SendPacketBuf() {
 					}
 				}
 
+				//q-learning,选择ｑ值最小的一个。
+				if (routenextId != 991) {
+					uint32_t qvalue = SearchRouteForQvalue(to);
+					SendACKFeedback(to, macfrom, qvalue, hopcount, nextId,
+							deflectrate, droprate, energyrate);
+				} else {
+					SendACKPacket(macfrom);
+				}
+
+				//没有feedback 的update
+				//SendACKPacket(macfrom);
 				if (routenextId != 991 && routeava && !TalreadySent
 						&& routeenergyenough) {
 					nextId = routenextId;
 					//如果是根据路由表选择出来的下一跳，那么就需要进行feedback的更新
-					uint32_t qvalue = SearchRouteForQvalue(to);
+					/*uint32_t qvalue = SearchRouteForQvalue(to);
 					SendACKFeedback(to, macfrom, qvalue, hopcount, nextId,
-							deflectrate, droprate, energyrate);
+							deflectrate, droprate, energyrate);*/
 
 					NS_LOG_FUNCTION(
 							this<<"Forward there is route"<<"nextId"<<nextId);
@@ -1220,9 +1231,9 @@ void QRouting::SendPacketBuf() {
 						&& !PalreadySent && !routeenergyenough) {
 					nextId = deflectedId;
 					//如果是从偏转表中选择出来的下一跳，那么就需要进行feedback的更新。
-					uint32_t qvalue = SearchRouteForQvalue(to);
+				/*	uint32_t qvalue = SearchRouteForQvalue(to);
 					SendACKFeedback(to, macfrom, qvalue, hopcount, nextId,
-							deflectrate, droprate, energyrate);
+							deflectrate, droprate, energyrate);*/
 
 					//既然nextId选择了deflect的形式，那么+1是很合理的。
 					GetDevice()->m_DeflectedCount =
@@ -1256,7 +1267,7 @@ void QRouting::SendPacketBuf() {
 							nextId = neighbors[i].first;
 						}
 						//如果是通过随机方法选择的下一跳，那么只需要简单ACK返回就可以了。
-						SendACKPacket(macfrom);
+						//SendACKPacket(macfrom);
 
 					} else if (newNeighbors.size() == 1
 							&& newNeighbors.at(0).first != macfrom) {
@@ -1264,7 +1275,7 @@ void QRouting::SendPacketBuf() {
 								this << "select the only available neighbors");
 						nextId = newNeighbors.at(0).first;
 						//如果是通过随机方法选择的下一跳，那么只需要简单ACK返回就可以了。
-						SendACKPacket(macfrom);
+						//SendACKPacket(macfrom);
 
 					} else if (newNeighbors.size() == 1
 							&& newNeighbors.at(0).first == macfrom) {
@@ -1272,7 +1283,7 @@ void QRouting::SendPacketBuf() {
 								this << "select the only available neighbors");
 						nextId = newNeighbors.at(0).first;
 						//如果是通过随机方法选择的下一跳，那么只需要简单ACK返回就可以了。
-						SendACKPacket(macfrom);
+						//SendACKPacket(macfrom);
 
 					}
 					NS_LOG_FUNCTION(
@@ -1399,3 +1410,4 @@ uint32_t QRouting::SearchMacFrom(uint32_t id) {
 	}
 }
 }
+

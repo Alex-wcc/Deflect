@@ -373,26 +373,11 @@ uint32_t QRouting::ChooseDeflectNode(uint32_t dstId, uint32_t routeNextId) {
 								* (Simulator::Now().GetSeconds() - it->UpTime))
 						/ GetDevice()->m_maxenergy;
 
-				if (energyconsumerate_pre_it * energyconsumerate_pre_c > 0) {
-					if ((it->Qvalue + (deltaT - it->UpTime) * it->RecRate)
-							* energyconsumerate_pre_it
-							< (cPreNode.Qvalue
-									+ (deltaT - cPreNode.UpTime)
-											* cPreNode.RecRate)
-									* energyconsumerate_pre_c) { // 寻找最小值
-						j = i;
-						cPreNode = m_prenode[j];
-						energyconsumerate_pre_c = (cPreNode.energyconsumerate
-								* GetDevice()->m_maxenergy
-								+ (cPreNode.energyharvestspeed
-										- cPreNode.energyconsumespeed)
-										* (Simulator::Now().GetSeconds()
-												- cPreNode.UpTime))
-								/ GetDevice()->m_maxenergy;
-					}
-				}
-				if (energyconsumerate_pre_it > 0
-						&& energyconsumerate_pre_c < 0) {
+				if ((it->Qvalue + (deltaT - it->UpTime) * it->RecRate)
+						* energyconsumerate_pre_it
+						< (cPreNode.Qvalue
+								+ (deltaT - cPreNode.UpTime) * cPreNode.RecRate)
+								* energyconsumerate_pre_c) { // 寻找最小值
 					j = i;
 					cPreNode = m_prenode[j];
 					energyconsumerate_pre_c = (cPreNode.energyconsumerate
@@ -622,7 +607,7 @@ void QRouting::ReceivePacket(Ptr<Packet> p) {
 		//一个可更新的ACK为50+37，87
 		//一个不更新路由表和偏转表的ACK为10+37. 47
 
-		if (p->GetSize() < 85) {
+		if (p->GetSize() < 70) {
 			//最简单的ACK，收到之后消耗能量，对ACKcount+1操作，对路由表复原。
 			if (GetDevice()->m_energy
 					< GetDevice()->m_EnergyReceivePerByte
@@ -643,25 +628,26 @@ void QRouting::ReceivePacket(Ptr<Packet> p) {
 			}
 		}
 
-		if (p->GetSize() > 85 && p->GetSize() < 160)//因为一个正常的包的大小是102bytes，所以小于这个大小的时候就是ACK,为什么取102呢？其实是瞎选的，但是保证packet的个数一定大于这个，ACK的大小一定小于这个。
-				{			//因为改了１６０这个数字，ａｃｋ收到的个数变的正常了，说明ｆｅｅｄｂａｃｋ的ａｃｋ的数量比１０２大。
-		/*//最简单的ACK，收到之后消耗能量，对ACKcount+1操作，对路由表复原。
-		 if (GetDevice()->m_energy
-		 < GetDevice()->m_EnergyReceivePerByte
-		 * GetDevice()->m_ACKSize) {
-		 int energy = GetDevice()->m_energy;
-		 energy = energy + 1;
-		 } else {
-		 //接收的ACK进行+1的操作
-		 GetDevice()->m_ReceiveACKCount = GetDevice()->m_ReceiveACKCount
-		 + 1;
-		 m_tosendBuffer.remove(m_tosendBuffer.front());
-		 //consume energy
-		 //GetDevice()->ConsumeEnergyRecACK();
-		 GetDevice()->ConsumeEnergyReceive(GetDevice()->m_ACKSize);
-		 //NS_LOG_FUNCTION(this<<'receive the ack'<<p<<'size'<<p->GetSize());
-		 SetRouteAv(macfrom);
-		 }*/
+		if (p->GetSize() > 70 && p->GetSize() < 160)//因为一个正常的包的大小是102bytes，所以小于这个大小的时候就是ACK,为什么取102呢？其实是瞎选的，但是保证packet的个数一定大于这个，ACK的大小一定小于这个。
+				{//因为改了１６０这个数字，ａｃｋ收到的个数变的正常了，说明ｆｅｅｄｂａｃｋ的ａｃｋ的数量比１０２大。
+			/*//最简单的ACK，收到之后消耗能量，对ACKcount+1操作，对路由表复原。
+			 if (GetDevice()->m_energy
+			 < GetDevice()->m_EnergyReceivePerByte
+			 * GetDevice()->m_ACKSize) {
+			 int energy = GetDevice()->m_energy;
+			 energy = energy + 1;
+			 } else {
+			 //接收的ACK进行+1的操作
+			 GetDevice()->m_ReceiveACKCount = GetDevice()->m_ReceiveACKCount
+			 + 1;
+			 m_tosendBuffer.remove(m_tosendBuffer.front());
+			 //consume energy
+			 //GetDevice()->ConsumeEnergyRecACK();
+			 GetDevice()->ConsumeEnergyReceive(GetDevice()->m_ACKSize);
+			 //NS_LOG_FUNCTION(this<<'receive the ack'<<p<<'size'<<p->GetSize());
+			 SetRouteAv(macfrom);
+			 }*/
+
 			//feedback的ACK，进行更新操作。
 			if (GetDevice()->m_energy
 					< GetDevice()->m_EnergyReceivePerByte
@@ -758,6 +744,7 @@ void QRouting::ReceivePacket(Ptr<Packet> p) {
 				//GetDevice()->ConsumeEnergySendACK();
 				GetDevice()->ConsumeEnergySend(GetDevice()->m_ACKSize);
 
+				SendACKPacket(macfrom);	//这个ACK的内容没有办法更新的。
 				//接收到相应的数据包，将相应的端口置为可用。
 				SetRouteAv(macfrom);
 				//接收的数据包进行+1操作
@@ -789,14 +776,14 @@ void QRouting::ReceivePacket(Ptr<Packet> p) {
 				if (hopcount == 1) {
 					if (!PreNodeE && previous != thisid) {
 						//add the q value table, i.e. the prenode
-						AddPreNodeNew(from, previous, qvalue, hopcount,
+						/*AddPreNodeNew(from, previous, qvalue, hopcount,
 								energyharvestspeed, energyconsumespeed,
-								energyrate);
+								energyrate);*/
 						uint32_t route = LookupRoute(from);
 						if (route == 991 && previous != thisid) {//路由表中已经有记录了，就不行进行增加了
-							AddRoute(from, previous, qvalue, hopcount,
+						/*	AddRoute(from, previous, qvalue, hopcount,
 									energyharvestspeed, energyconsumespeed,
-									energyrate);
+									energyrate);*/
 						}
 						//AddRoute(from, previous, qvalue, hopcount);
 					} else {
@@ -804,14 +791,14 @@ void QRouting::ReceivePacket(Ptr<Packet> p) {
 					}
 				} else {		//跳数大于一跳
 					if (!PreNodeE && previous != thisid) {
-						AddPreNodeNew(from, previous, qvalue, hopcount,
+						/*AddPreNodeNew(from, previous, qvalue, hopcount,
 								energyharvestspeed, energyconsumespeed,
-								energyrate);
+								energyrate);*/
 						uint32_t route = LookupRoute(from);
 						if (route == 991 && previous != thisid) {//路由表中已经有记录了，就不行进行增加了
-							AddRoute(from, previous, qvalue, hopcount,
+							/*AddRoute(from, previous, qvalue, hopcount,
 									energyharvestspeed, energyconsumespeed,
-									energyrate);
+									energyrate);*/
 						}
 					} else if (PreNodeE && previous != thisid) {
 						//
@@ -821,21 +808,20 @@ void QRouting::ReceivePacket(Ptr<Packet> p) {
 						double preReward = qvalue * (qhopcount + 1)
 								* (1 + deflectrate) * (1 + droprate)
 								* (1 + energyrate) / 1000000;
-						UpdatePreNode(from, previous, preReward, qhopcount,
+						/*UpdatePreNode(from, previous, preReward, qhopcount,
 								energyharvestspeed, energyconsumespeed,
-								energyrate);
+								energyrate);*/
 						uint32_t newQvalue = UpdateQvalue(from, preReward,
 								qhopcount, energyharvestspeed,
 								energyconsumespeed, energyrate);	//更新路由表上的Q值
 						if (newQvalue == 996) {
 						} else {
-							UpdateRoute(from, previous, newQvalue, qhopcount);
+							//UpdateRoute(from, previous, newQvalue, qhopcount);
 						}
 					}
 				}
 				if (to == GetDevice()->GetNode()->GetId()) {
 					//如果节点是自己本身，那么只要返回简单的ACK就可以了。
-					SendACKPacket(macfrom);	//这个ACK的内容没有办法更新的。
 					NS_LOG_FUNCTION(this<<"i am the destination");
 					p->AddHeader(l3Header);
 					GetDevice()->GetMessageProcessUnit()->ProcessMessage(p);
@@ -1203,13 +1189,12 @@ void QRouting::SendPacketBuf() {
 					}
 				}
 
-				if (routenextId != 991 && routeava && !TalreadySent
-						&& routeenergyenough) {
+				if (routenextId != 991 && routeava && !TalreadySent && routeenergyenough) {
 					nextId = routenextId;
 					//如果是根据路由表选择出来的下一跳，那么就需要进行feedback的更新
-					uint32_t qvalue = SearchRouteForQvalue(to);
+					/*uint32_t qvalue = SearchRouteForQvalue(to);
 					SendACKFeedback(to, macfrom, qvalue, hopcount, nextId,
-							deflectrate, droprate, energyrate);
+							deflectrate, droprate, energyrate);*/
 
 					NS_LOG_FUNCTION(
 							this<<"Forward there is route"<<"nextId"<<nextId);
@@ -1220,9 +1205,9 @@ void QRouting::SendPacketBuf() {
 						&& !PalreadySent && !routeenergyenough) {
 					nextId = deflectedId;
 					//如果是从偏转表中选择出来的下一跳，那么就需要进行feedback的更新。
-					uint32_t qvalue = SearchRouteForQvalue(to);
+					/*uint32_t qvalue = SearchRouteForQvalue(to);
 					SendACKFeedback(to, macfrom, qvalue, hopcount, nextId,
-							deflectrate, droprate, energyrate);
+							deflectrate, droprate, energyrate);*/
 
 					//既然nextId选择了deflect的形式，那么+1是很合理的。
 					GetDevice()->m_DeflectedCount =
@@ -1256,7 +1241,7 @@ void QRouting::SendPacketBuf() {
 							nextId = neighbors[i].first;
 						}
 						//如果是通过随机方法选择的下一跳，那么只需要简单ACK返回就可以了。
-						SendACKPacket(macfrom);
+						//SendACKPacket(macfrom);
 
 					} else if (newNeighbors.size() == 1
 							&& newNeighbors.at(0).first != macfrom) {
@@ -1264,7 +1249,7 @@ void QRouting::SendPacketBuf() {
 								this << "select the only available neighbors");
 						nextId = newNeighbors.at(0).first;
 						//如果是通过随机方法选择的下一跳，那么只需要简单ACK返回就可以了。
-						SendACKPacket(macfrom);
+						//SendACKPacket(macfrom);
 
 					} else if (newNeighbors.size() == 1
 							&& newNeighbors.at(0).first == macfrom) {
@@ -1272,7 +1257,7 @@ void QRouting::SendPacketBuf() {
 								this << "select the only available neighbors");
 						nextId = newNeighbors.at(0).first;
 						//如果是通过随机方法选择的下一跳，那么只需要简单ACK返回就可以了。
-						SendACKPacket(macfrom);
+						//SendACKPacket(macfrom);
 
 					}
 					NS_LOG_FUNCTION(
@@ -1399,3 +1384,4 @@ uint32_t QRouting::SearchMacFrom(uint32_t id) {
 	}
 }
 }
+

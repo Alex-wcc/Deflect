@@ -645,7 +645,7 @@ void QRouting::ReceivePacket(Ptr<Packet> p) {
 
 		if (p->GetSize() > 85 && p->GetSize() < 160)//因为一个正常的包的大小是102bytes，所以小于这个大小的时候就是ACK,为什么取102呢？其实是瞎选的，但是保证packet的个数一定大于这个，ACK的大小一定小于这个。
 				{			//因为改了１６０这个数字，ａｃｋ收到的个数变的正常了，说明ｆｅｅｄｂａｃｋ的ａｃｋ的数量比１０２大。
-		/*//最简单的ACK，收到之后消耗能量，对ACKcount+1操作，对路由表复原。
+		//最简单的ACK，收到之后消耗能量，对ACKcount+1操作，对路由表复原。
 		 if (GetDevice()->m_energy
 		 < GetDevice()->m_EnergyReceivePerByte
 		 * GetDevice()->m_ACKSize) {
@@ -661,8 +661,8 @@ void QRouting::ReceivePacket(Ptr<Packet> p) {
 		 GetDevice()->ConsumeEnergyReceive(GetDevice()->m_ACKSize);
 		 //NS_LOG_FUNCTION(this<<'receive the ack'<<p<<'size'<<p->GetSize());
 		 SetRouteAv(macfrom);
-		 }*/
-			//feedback的ACK，进行更新操作。
+		 }
+			/*//feedback的ACK，进行更新操作。
 			if (GetDevice()->m_energy
 					< GetDevice()->m_EnergyReceivePerByte
 							* GetDevice()->m_ACKSize) {
@@ -723,7 +723,7 @@ void QRouting::ReceivePacket(Ptr<Packet> p) {
 						UpdateRoute(to, from, newQvalue, qhopcount);
 					}
 				}
-			}
+			}*/
 		}
 		if (p->GetSize() > 160) {
 			if (GetDevice()->m_energy
@@ -1399,3 +1399,4 @@ uint32_t QRouting::SearchMacFrom(uint32_t id) {
 	}
 }
 }
+
