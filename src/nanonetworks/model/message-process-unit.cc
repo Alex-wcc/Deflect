@@ -119,8 +119,8 @@ void MessageProcessUnit::CreteMessage() {
 void MessageProcessUnit::PrintNodestatus()
 {
 	int nodeid = m_device->GetNode()->GetId();
-	int energy = m_device->m_energy;
-	int maxenergy = m_device->m_maxenergy;
+	double energy = m_device->m_energy;
+	double maxenergy = m_device->m_maxenergy;
 	double sendcount = m_device->m_SendCount;
 	double deflectcount = m_device->m_DeflectedCount;
 	double receivecount = m_device->m_ReceiveCount;

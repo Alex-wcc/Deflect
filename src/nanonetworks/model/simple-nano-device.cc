@@ -275,18 +275,24 @@ void SimpleNanoDevice::HarvestEnergy() {
 	m_randv = m_randv + 23;
 	double harenergyspeedThisTime = ((rand() % (m_harenergyspeed - 0 + 1)) + 0)
 			/ 100.0;
-	double HarEnergyThisTime = m_harenergyintertime * (harenergyspeedThisTime);
+	double HarEnergyThisTime = m_harenergyintertime * harenergyspeedThisTime;
+	m_energy = m_energy + HarEnergyThisTime;
+	m_energyHarvestSum = m_energyHarvestSum + HarEnergyThisTime;
 
-	if ((m_energy + HarEnergyThisTime) > m_maxenergy) {
-		//for the energy prediction
-		m_energyHarvestSum = m_energyHarvestSum + m_maxenergy - m_energy;
+	if (m_energy > m_maxenergy) {
 		m_energy = m_maxenergy;
-
-	} else {
-		//for the energy prediction
-		m_energyHarvestSum = m_energyHarvestSum + HarEnergyThisTime;
-		m_energy = m_energy + HarEnergyThisTime;
 	}
+
+	/*if ((m_energy + HarEnergyThisTime) > m_maxenergy) {
+	 //for the energy prediction
+	 m_energyHarvestSum = m_energyHarvestSum + m_maxenergy - m_energy;
+	 m_energy = m_maxenergy;
+
+	 } else {
+	 //for the energy prediction
+	 m_energyHarvestSum = m_energyHarvestSum + HarEnergyThisTime;
+	 m_energy = m_energy + HarEnergyThisTime;
+	 }*/
 	Simulator::Schedule(Seconds(m_harenergyintertime),
 			&SimpleNanoDevice::HarvestEnergy, this);
 }
@@ -344,17 +350,16 @@ void SimpleNanoDevice::SetNACKSize(double nacksize) {
 
 //for energy prediciton
 /*double SimpleNanoDevice::GetEnergyHarvestSum() const {
-	NS_LOG_FUNCTION(this);
-	return m_energyHarvestSum;
-}
+ NS_LOG_FUNCTION(this);
+ return m_energyHarvestSum;
+ }
 
-double SimpleNanoDevice::GetEnergyConsumeSum() const {
-	NS_LOG_FUNCTION(this);
-	return m_energyConsumeSum;
-}*/
+ double SimpleNanoDevice::GetEnergyConsumeSum() const {
+ NS_LOG_FUNCTION(this);
+ return m_energyConsumeSum;
+ }*/
 
 //for buffer size of the nanonode
-
 void SimpleNanoDevice::SetBufferSize(uint32_t buffersize) {
 	NS_LOG_FUNCTION(this);
 	m_bufferSize = buffersize;

@@ -40,6 +40,7 @@ public:
 	uint32_t SearchRouteForQHopCount(uint32_t dstId);
 	bool RouteAvailable(uint32_t dstId);
 	uint32_t LookUpPreNode(uint32_t dstId);
+	bool CheckRouteEnergyEnough(uint32_t dstId);//for energy prediction,查询该路由是否的下一跳节点能量是否够用。
 	bool SearchPreNode(uint32_t dstId, uint32_t nextId); //寻找对应的记录是否存在，以便于进行添加或者更新
 	uint32_t ChooseDeflectNode(uint32_t dstId, uint32_t routeNextId);
 	//05/31/2018 因为energy prediction 增加两个变量.  增加一个关于能量状态的变量
@@ -66,6 +67,8 @@ public:
 	void SendACKFeedback(uint32_t destination, uint32_t macfrom, uint32_t qvalue, uint32_t hopcount,
 			uint32_t nextid, uint32_t deflectrate, uint32_t droprate,
 			uint32_t energyrate);
+
+
 
 	typedef struct {
 		uint32_t dstId;

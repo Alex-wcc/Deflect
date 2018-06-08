@@ -143,17 +143,17 @@ uint32_t QRouting::LookupRoute(uint32_t dstId) {
 	uint16_t i = 0; //count number
 	//prediction, 超过最小能量才进行发送。
 	/*double energy_min_send = GetDevice()->m_EnergySendPerByte
-			* GetDevice()->m_PacketSize
-			+ GetDevice()->m_EnergyReceivePerByte * GetDevice()->m_ACKSize;*/
+	 * GetDevice()->m_PacketSize
+	 + GetDevice()->m_EnergyReceivePerByte * GetDevice()->m_ACKSize;*/
 	for (; it != m_qtable.end(); ++it) {
 
 		/*double energystatus = (1 - it->energyconsumerate / 100)
-				* GetDevice()->m_maxenergy
-				+ (it->energyharvestspeed - it->energyconsumespeed)
-						* (Simulator::Now().GetSeconds() - it->UpTime);*/
+		 * GetDevice()->m_maxenergy
+		 + (it->energyharvestspeed - it->energyconsumespeed)
+		 * (Simulator::Now().GetSeconds() - it->UpTime);*/
 		if (it->dstId == dstId && it->dstId != 999
-				/*&& energystatus
-						>= energy_min_send*//*&& it->RouteValid == true*/) {
+		/*&& energystatus
+		 >= energy_min_send*//*&& it->RouteValid == true*/) {
 			break;
 		}
 		i++;
@@ -289,6 +289,38 @@ uint32_t QRouting::LookUpPreNode(uint32_t dstId) {
 		return 994; //不存在prenode
 	}
 }
+//energy prediction 预测有没有足够的能量。
+bool QRouting::CheckRouteEnergyEnough(uint32_t dstId) {
+	std::vector<QTableEntry>::iterator it = m_qtable.begin();
+
+	uint16_t i = 0;
+	//energy prediction,预测还有能量才能选择
+	double energystatus_pre_c;
+	double energy_min_speed = GetDevice()->m_EnergySendPerByte
+			* GetDevice()->m_PacketSize
+			+ GetDevice()->m_EnergyReceivePerByte * GetDevice()->m_ACKSize;
+	double deltaT = Simulator::Now().GetSeconds();
+
+	for (; it != m_qtable.end(); ++it) {
+		if (it->dstId == dstId && it->RouteValid == true && it->dstId != 999) {
+
+			energystatus_pre_c = (1 - it->energyconsumerate / 100)
+					* GetDevice()->m_maxenergy
+					+ (it->energyharvestspeed - it->energyconsumespeed)
+							* (deltaT - it->UpTime);
+			if (energystatus_pre_c >= energy_min_speed || 1) {
+				break;
+			}
+		}
+		i++;
+	}
+	//QTableEntry Qroute = m_qtable[i];
+	if (i < m_qtable.size()) {
+		return true;
+	} else {
+		return false;
+	}
+}
 //选择一个deflect node
 uint32_t QRouting::ChooseDeflectNode(uint32_t dstId, uint32_t routeNextId) {
 	std::vector<PreNodeEntry>::iterator it = m_prenode.begin();
@@ -313,7 +345,7 @@ uint32_t QRouting::ChooseDeflectNode(uint32_t dstId, uint32_t routeNextId) {
 					+ (it->energyharvestspeed - it->energyconsumespeed)
 							* (Simulator::Now().GetSeconds() - it->UpTime);
 			//小于最小发射能量就不选择了。
-			if (energystatus_pre_c >= energy_min_send) {
+			if (energystatus_pre_c >= energy_min_send || 1) {
 				j = i;
 				break;
 			}
@@ -596,8 +628,8 @@ void QRouting::ReceivePacket(Ptr<Packet> p) {
 			}
 		}
 
-		if (p->GetSize() > 70 && p->GetSize() < 102)//因为一个正常的包的大小是102bytes，所以小于这个大小的时候就是ACK,为什么取102呢？其实是瞎选的，但是保证packet的个数一定大于这个，ACK的大小一定小于这个。
-				{
+		if (p->GetSize() > 70 && p->GetSize() < 160)//因为一个正常的包的大小是102bytes，所以小于这个大小的时候就是ACK,为什么取102呢？其实是瞎选的，但是保证packet的个数一定大于这个，ACK的大小一定小于这个。
+				{//因为改了１６０这个数字，ａｃｋ收到的个数变的正常了，说明ｆｅｅｄｂａｃｋ的ａｃｋ的数量比１０２大。
 			/*//最简单的ACK，收到之后消耗能量，对ACKcount+1操作，对路由表复原。
 			 if (GetDevice()->m_energy
 			 < GetDevice()->m_EnergyReceivePerByte
@@ -679,7 +711,7 @@ void QRouting::ReceivePacket(Ptr<Packet> p) {
 				}
 			}
 		}
-		if (p->GetSize() > 102) {
+		if (p->GetSize() > 160) {
 			if (GetDevice()->m_energy
 					<= GetDevice()->m_EnergySendPerByte
 							* GetDevice()->m_PacketSize
@@ -931,11 +963,12 @@ void QRouting::ForwardPacket1(Ptr<Packet> p, uint32_t macfrom) {
 		//收到包，进行压栈
 		//GetDevice()->m_queuePacket.push_back(p);
 		if (m_SendingTag == true) {
-			UpdateToSendBuffer(p);
 			UpdateMacFrom(id, macfrom);
+			UpdateToSendBuffer(p);
+
 		} else {
-			UpdateToSendBuffer(p);
 			UpdateMacFrom(id, macfrom);
+			UpdateToSendBuffer(p);
 			SendPacketBuf();
 		}
 
@@ -981,7 +1014,7 @@ void QRouting::SendPacketBuf() {
 		uint32_t qhopcount = l3Header.GetQHopCount();
 
 		//查询相应的macfrom的地址。这样nodes就能知道将ACK发送给谁。
-		uint32_t macfrom = SearchMacFrom(id);
+		//uint32_t macfrom = SearchMacFrom(id);
 
 		//for send the packet in the buffer
 		if (hopcount == 1) {
@@ -1021,28 +1054,29 @@ void QRouting::SendPacketBuf() {
 
 				uint32_t routenextId = LookupRoute(to);
 				bool routeava = RouteAvailable(to);
+				bool routeenergyenough = CheckRouteEnergyEnough(to);
 				uint32_t deflectId;
 				if (routenextId != 991) {
 					deflectId = ChooseDeflectNode(to, routenextId);
 				}
 
-				if (routenextId != 991 && routeava) { //如果目的地址不是邻居节点，但是在路由表上
+				if (routenextId != 991 && routeava && routeenergyenough) { //如果目的地址不是邻居节点，但是在路由表上
 					//获取邻居节点号  路由表发送
 					nextId = LookupRoute(to);
 					NS_LOG_FUNCTION(
 							this<<"There is a route" << "nextId" << nextId);
 					//在发出去之前发送可以更新路由表的ack到上一个节点？
-					uint32_t qvalue = SearchRouteForQvalue(to);
-					SendACKFeedback(to, macfrom, qvalue, hopcount, nextId,
-							deflectrate, droprate, energyrate);
+					//uint32_t qvalue = SearchRouteForQvalue(to);
+					//SendACKFeedback(to, macfrom, qvalue, hopcount, nextId,
+					//		deflectrate, droprate, energyrate);
 
-				} else if (routenextId != 991 && !routeava
+				} else if (routenextId != 991 && !routeava && !routeenergyenough
 						&& deflectId != 995) {
 					nextId = deflectId;
 					//在发出去之前发送可以更新路由表的ack到上一个节点？
-					uint32_t qvalue = SearchRouteForQvalue(to);
-					SendACKFeedback(to, macfrom, qvalue, hopcount, nextId,
-							deflectrate, droprate, energyrate);
+					//uint32_t qvalue = SearchRouteForQvalue(to);
+					//SendACKFeedback(to, macfrom, qvalue, hopcount, nextId,
+					//		deflectrate, droprate, energyrate);
 
 					//既然nextId选择了deflect的形式，那么+1是很合理的。
 					GetDevice()->m_DeflectedCount =
@@ -1060,7 +1094,7 @@ void QRouting::SendPacketBuf() {
 						int i = rand() % neighbors.size();
 						nextId = neighbors[i].first;
 						//如果是随机选择的节点，那么发回的ack不能用于更新路由表,只要发个ACK回去就行了。
-						SendACKPacket(macfrom);
+						//SendACKPacket(macfrom);
 					}
 					NS_LOG_FUNCTION(
 							this<<"random choose a neighbor" << "nextId" << nextId);
@@ -1147,6 +1181,7 @@ void QRouting::SendPacketBuf() {
 					TalreadySent = CheckAmongSentPacket(id, routenextId);
 				}
 				bool routeava = RouteAvailable(to);
+				bool routeenergyenough = CheckRouteEnergyEnough(to);
 				if (routenextId != 991 && !routeava) {
 					deflectedId = ChooseDeflectNode(to, routenextId);
 					if (deflectedId != 995) {
@@ -1154,7 +1189,7 @@ void QRouting::SendPacketBuf() {
 					}
 				}
 
-				if (routenextId != 991 && routeava && !TalreadySent) {
+				if (routenextId != 991 && routeava && !TalreadySent && routeenergyenough) {
 					nextId = routenextId;
 					//如果是根据路由表选择出来的下一跳，那么就需要进行feedback的更新
 					uint32_t qvalue = SearchRouteForQvalue(to);
@@ -1167,7 +1202,7 @@ void QRouting::SendPacketBuf() {
 					headerQvalue = SearchRouteForQvalue(from);
 					qhopcount = SearchRouteForQHopCount(from);
 				} else if (routenextId != 991 && !routeava && deflectedId != 995
-						&& !PalreadySent) {
+						&& !PalreadySent && !routeenergyenough) {
 					nextId = deflectedId;
 					//如果是从偏转表中选择出来的下一跳，那么就需要进行feedback的更新。
 					uint32_t qvalue = SearchRouteForQvalue(to);

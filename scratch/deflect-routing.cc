@@ -45,7 +45,7 @@ void Run(int nbNanoNodes, double txRangeNanoNodes, int macType, int l3Type,
 void PrintTXEvents(Ptr<OutputStreamWrapper> stream, int, int, int);
 void PrintRXEvents(Ptr<OutputStreamWrapper> stream, int, int, int, int, double,
 		int, int, int);
-void PrintNodeStatus(Ptr<OutputStreamWrapper> stream, int, int, int, double,
+void PrintNodeStatus(Ptr<OutputStreamWrapper> stream, int, double, double, double,
 		double, double, double);
 void PrintPHYTXEvents(Ptr<OutputStreamWrapper> stream, int, int);
 void PrintPHYCOLLEvents(Ptr<OutputStreamWrapper> stream, int, int);
@@ -335,8 +335,8 @@ void PrintRXEvents(Ptr<OutputStreamWrapper> stream, int id, int size, int src,
 			<< " " << std::endl;
 }
 
-void PrintNodeStatus(Ptr<OutputStreamWrapper> stream, int id, int energy,
-		int maxenergy, double sendcount, double deflectcount,
+void PrintNodeStatus(Ptr<OutputStreamWrapper> stream, int id, double energy,
+		double maxenergy, double sendcount, double deflectcount,
 		double receivecount, double receiveackcount) {
 	*stream->GetStream() << id << " " << energy << " " << maxenergy << " "
 			<< sendcount << " " << deflectcount << " " << receivecount << " "

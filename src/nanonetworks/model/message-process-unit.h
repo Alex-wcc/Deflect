@@ -68,8 +68,8 @@ private:
 	TracedCallback<int, int, int> m_outTX;
 	TracedCallback<int, int, int, int, double, int, int, int> m_outRX;
 // to print the node status
-	typedef void (*NodeStatusCallback)(int, int, int, double, double, double, double);
-	TracedCallback<int, int, int, double, double, double, double> m_NodeStatus;
+	typedef void (*NodeStatusCallback)(int, double, double, double, double, double, double);
+	TracedCallback<int, double, double, double, double, double, double> m_NodeStatus;
 };
 
 } // namespace ns3
